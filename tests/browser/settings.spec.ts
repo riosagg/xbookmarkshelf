@@ -18,6 +18,34 @@ async function seed(page: import('@playwright/test').Page) {
 }
 const settingsInput = (value: unknown, name = 'settings.json') => ({ name, mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(value)) });
 
+test('import URLs validate, persist, update source links and reset independently from display settings', async ({ page }) => {
+  await seed(page);
+  const section = page.getByRole('region', { name: '取得先URL', exact: true });
+  const book = section.getByLabel('ブックマークの取得先URL'); const like = section.getByLabel('いいねの取得先URL');
+  await expect(book).toHaveValue('https://x.com/i/bookmarks'); await expect(like).toHaveValue('https://x.com/i/history/likes');
+  await book.fill('https://evil.invalid/i/saved'); await section.getByRole('button', { name: 'URLを保存', exact: true }).click();
+  await expect(section.getByRole('alert')).toContainText('Xの一覧ページ');
+  const custom = `https://x.com/i/saved-posts?filter=${'a'.repeat(1500)}`;
+  await book.fill(custom); await like.fill('https://x.com/i/liked-posts');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await section.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await section.getByRole('button', { name: 'URLを保存', exact: true }).click();
+  await expect(section.getByRole('status')).toContainText('保存しました');
+  await page.reload();
+  await page.getByRole('navigation', { name: '管理', exact: true }).getByRole('button', { name: '設定', exact: true }).click();
+  await expect(book).toHaveValue(custom); await expect(like).toHaveValue('https://x.com/i/liked-posts');
+  await page.getByRole('navigation', { name: '管理', exact: true }).getByRole('button', { name: '取り込み', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'XのBookmarksを開く', exact: true })).toHaveAttribute('href', custom);
+  await page.getByRole('group', { name: 'ライブラリ切替' }).getByRole('button', { name: 'いいね', exact: true }).click();
+  await page.getByRole('navigation', { name: '管理', exact: true }).getByRole('button', { name: '取り込み', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'XのLikesを開く', exact: true })).toHaveAttribute('href', 'https://x.com/i/liked-posts');
+  await page.getByRole('navigation', { name: '管理', exact: true }).getByRole('button', { name: '設定', exact: true }).click();
+  await section.getByRole('button', { name: '初期URLに戻す', exact: true }).click();
+  await expect(book).toHaveValue('https://x.com/i/bookmarks'); await expect(like).toHaveValue('https://x.com/i/history/likes');
+  await page.getByRole('combobox', { name: '言語', exact: true }).selectOption('en');
+  await expect(page.getByRole('region', { name: 'Import URLs', exact: true }).getByLabel('Likes import URL')).toHaveValue('https://x.com/i/history/likes');
+});
+
 test('settings export and confirmed import preserve posts and classification and persist all display preferences', async ({ page }) => {
   let images = 0;
   await page.route('https://pbs.twimg.com/**', route => { images++; return route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><rect width="30" height="30" fill="green"/></svg>' }); });

@@ -1,5 +1,7 @@
 import { accountFor, commitBatch, libraryStores, storeForSource, finishRun, newRun } from './db';
-import { type ImportRun, type StopReason, type LibrarySource, REASON_LABELS, isLibrarySource, isLibraryUrl, validHandle, validateOptions } from './model';
+import { type ImportRun, type StopReason, type LibrarySource, type ImportLocations, REASON_LABELS, isLibrarySource, validHandle, validateOptions } from './model';
+import { isImportPageUrl, runImportLocations } from './import-locations';
+import { loadImportLocations } from './import-locations-store';
 
 function sourceOf(value: unknown): LibrarySource {
   if (value === undefined) return 'bookmarks';
@@ -15,25 +17,27 @@ function trustedPage(sender: chrome.runtime.MessageSender): boolean {
       (!url.searchParams.has('source') || isLibrarySource(url.searchParams.get('source')));
   } catch { return false; }
 }
-async function inspect(tabId: number) {
+async function inspect(tabId: number, suppliedLocations?: ImportLocations) {
+  const locations = suppliedLocations ?? await loadImportLocations();
   if (!Number.isInteger(tabId)) throw new Error('Xのタブを確認できません');
   const tab = await chrome.tabs.get(tabId);
-  if (!isLibraryUrl(tab.url)) throw new Error('Xのブックマークかいいねの画面を開いてください');
+  if (!isImportPageUrl(tab.url, locations)) throw new Error('Xのブックマークかいいねの画面を開いてください');
   const results = await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
   const documentId = results.find(r => r.frameId === 0)?.documentId;
   if (!documentId) throw new Error('ページの読み込みを確認できません');
-  const response = await chrome.tabs.sendMessage(tabId, { type: 'INSPECT' }, { documentId });
+  const response = await chrome.tabs.sendMessage(tabId, { type: 'INSPECT', locations }, { documentId });
   if (!isLibrarySource(response?.source)) throw new Error('XのHistoryでBookmarksかLikesを選ぶか、自分のいいね画面を開いてください');
-  if (!isLibraryUrl(response?.url) || !validHandle(response?.handle) || response.restricted) throw new Error('ログイン中のアカウントとページを確認できません');
+  if (!isImportPageUrl(response?.url, locations) || !validHandle(response?.handle) || response.restricted) throw new Error('ログイン中のアカウントとページを確認できません');
   return { handle: response.handle.toLowerCase() as string, documentId, source: response.source as LibrarySource };
 }
 async function authorizedRun(id: unknown, source: LibrarySource, sender: chrome.runtime.MessageSender): Promise<ImportRun> {
   if (typeof id !== 'string' || id.length > 64) throw new Error('取り込みIDが不正です');
   const run = await storeForSource(source).importRuns.get(id);
+  const locations = runImportLocations(run?.importLocations);
   if (!run || (run.source ?? 'bookmarks') !== source || sender.id !== chrome.runtime.id || sender.frameId !== 0 || sender.tab?.id !== run.tabId ||
-      sender.documentId !== run.documentId || !isLibraryUrl(sender.url)) throw new Error('送信元が不正です');
+      sender.documentId !== run.documentId || !locations || !isImportPageUrl(sender.url, locations)) throw new Error('送信元が不正です');
   const current = await chrome.tabs.get(run.tabId);
-  if (!isLibraryUrl(current.url)) throw new Error('対象ページが変わりました');
+  if (!isImportPageUrl(current.url, locations)) throw new Error('対象ページが変わりました');
   return run;
 }
 async function expireRuns() {
@@ -52,7 +56,8 @@ async function start(message: Record<string, unknown>, source: LibrarySource) {
   try {
     const options = validateOptions(message.options);
     const tabId = message.tabId as number;
-    const identity = await inspect(tabId);
+    const locations = await loadImportLocations();
+    const identity = await inspect(tabId, locations);
     if (identity.handle !== message.handle) throw new Error('対象アカウントが変わりました');
     if (identity.source !== source) throw new Error('取り込み対象の一覧が変わりました');
     await expireRuns();
@@ -60,6 +65,7 @@ async function start(message: Record<string, unknown>, source: LibrarySource) {
     const store = storeForSource(source);
     const account = await accountFor(identity.handle, store);
     const run = newRun(account, tabId, identity.documentId, options, source);
+    run.importLocations = locations;
     await store.importRuns.add(run);
     try {
       const result = await chrome.tabs.sendMessage(tabId, { type: 'READ', run }, { documentId: run.documentId });
@@ -85,9 +91,10 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
   }
   const run = await authorizedRun(message.runId, source, sender);
   if (message.type === 'BATCH') {
-    const identity = await chrome.tabs.sendMessage(run.tabId, { type: 'INSPECT' }, { documentId: run.documentId });
+    const locations = runImportLocations(run.importLocations)!;
+    const identity = await chrome.tabs.sendMessage(run.tabId, { type: 'INSPECT', locations }, { documentId: run.documentId });
     if (identity?.source !== source) return finishRun(run.id, 'source_scope_changed', store);
-    if (identity?.handle !== run.handle || identity.restricted || !isLibraryUrl(identity.url)) return finishRun(run.id, 'account_changed', store);
+    if (identity?.handle !== run.handle || identity.restricted || !isImportPageUrl(identity.url, locations)) return finishRun(run.id, 'account_changed', store);
     return commitBatch(run.id, message.sequence as number, message.posts, store);
   }
   if (message.type === 'HEARTBEAT') return store.transaction('rw', store.importRuns, async () => {
@@ -110,7 +117,16 @@ async function stopForTab(tabId: number, reason: StopReason) {
   }
 }
 chrome.tabs.onRemoved.addListener(tabId => { void stopForTab(tabId, 'tab_closed'); });
-chrome.tabs.onUpdated.addListener((tabId, changes) => { if (changes.url && !isLibraryUrl(changes.url)) void stopForTab(tabId, 'source_changed'); });
+chrome.tabs.onUpdated.addListener((tabId, changes) => {
+  if (!changes.url) return;
+  const url = changes.url;
+  for (const store of libraryStores) void store.importRuns.where('tabId').equals(tabId).filter(r => r.state === 'running').toArray().then(async runs => {
+    for (const run of runs) {
+      const locations = runImportLocations(run.importLocations);
+      if (!locations || !isImportPageUrl(url, locations)) await finishRun(run.id, 'source_changed', store);
+    }
+  });
+});
 chrome.runtime.onStartup.addListener(() => {
   for (const store of libraryStores) void store.importRuns.where('state').equals('running').toArray().then(runs => Promise.all(runs.map(r => finishRun(r.id, 'interrupted', store))));
 });

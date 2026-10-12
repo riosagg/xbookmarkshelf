@@ -1,10 +1,11 @@
 import { readAccount, readArticle, restrictedPage, libraryScope } from './dom';
-import { type ImportRun, type StopReason, isLibraryUrl, isLibrarySource } from './model';
+import { type ImportRun, type StopReason, isLibrarySource } from './model';
+import { isImportPageUrl, runImportLocations } from './import-locations';
 import { runReader } from './reader';
 
 declare global { interface Window { __xBookmarkReaderVersion?: string } }
-if (window.__xBookmarkReaderVersion !== '0.1.0-libraries') {
-  window.__xBookmarkReaderVersion = '0.1.0-libraries';
+if (window.__xBookmarkReaderVersion !== '0.1.0-import-locations') {
+  window.__xBookmarkReaderVersion = '0.1.0-import-locations';
   let controller: AbortController | null = null;
   async function request(type: string, run: ImportRun, extra = {}) {
     const reply = await chrome.runtime.sendMessage({ type, runId: run.id, source: run.source ?? 'bookmarks', ...extra });
@@ -12,8 +13,9 @@ if (window.__xBookmarkReaderVersion !== '0.1.0-libraries') {
     return reply.value as ImportRun;
   }
   function guard(run: ImportRun): StopReason | null {
-    if (!isLibraryUrl(location.href)) return 'source_changed';
-    if (libraryScope(document, location.href) !== (run.source ?? 'bookmarks')) return 'source_scope_changed';
+    const locations = runImportLocations(run.importLocations);
+    if (!locations || !isImportPageUrl(location.href, locations)) return 'source_changed';
+    if (libraryScope(document, location.href, locations) !== (run.source ?? 'bookmarks')) return 'source_scope_changed';
     if (restrictedPage(document)) return 'access_restricted';
     if (readAccount(document) !== run.handle) return 'account_changed';
     if (document.hidden) return 'source_hidden';
@@ -22,7 +24,9 @@ if (window.__xBookmarkReaderVersion !== '0.1.0-libraries') {
   chrome.runtime.onMessage.addListener((message, sender, reply) => {
     if (sender.id !== chrome.runtime.id || sender.url?.startsWith('https://')) return;
     if (message?.type === 'INSPECT') {
-      reply({ handle: readAccount(document), restricted: restrictedPage(document), url: location.href, source: libraryScope(document, location.href), bookmarkSelected: libraryScope(document, location.href) === 'bookmarks' });
+      const locations = runImportLocations(message.locations);
+      const source = locations ? libraryScope(document, location.href, locations) : null;
+      reply({ handle: readAccount(document), restricted: restrictedPage(document), url: location.href, source, bookmarkSelected: source === 'bookmarks' });
     } else if (message?.type === 'CONTROL') {
       controller?.abort(); reply({ stopped: true });
     } else if (message?.type === 'READ' && !controller) {

@@ -2,10 +2,13 @@ import 'fake-indexeddb/auto';
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { db, likesDB } from '../../src/db';
 import { observation } from './helpers';
+import { saveImportLocations } from '../../src/import-locations-store';
+import { DEFAULT_IMPORT_LOCATIONS } from '../../src/import-locations';
 
 const id = 'synthetic-extension';
 let listener: (message: unknown, sender: chrome.runtime.MessageSender, reply: (value: any) => void) => void;
 const pages = new Map<number, { source: 'bookmarks' | 'likes'; handle: string; url: string }>();
+const inspections: unknown[] = [];
 const fromPage = { id, url: `chrome-extension://${id}/popup.html` };
 const fromTab = (tabId: number) => ({ id, tab: { id: tabId } as chrome.tabs.Tab, frameId: 0, documentId: `doc-${tabId}`, url: pages.get(tabId)!.url });
 const send = (message: unknown, sender: chrome.runtime.MessageSender = fromPage): Promise<any> => new Promise(resolve => listener(message, sender, resolve));
@@ -14,7 +17,10 @@ beforeAll(async () => {
     runtime: { id, getURL: (path: string) => `chrome-extension://${id}/${path}`, onMessage: { addListener: (value: typeof listener) => { listener = value; } }, onStartup: { addListener: vi.fn() } },
     scripting: { executeScript: async ({ target }: { target: { tabId: number } }) => [{ frameId: 0, documentId: `doc-${target.tabId}` }] },
     tabs: { get: async (tabId: number) => ({ id: tabId, url: pages.get(tabId)?.url }),
-      sendMessage: async (tabId: number, message: { type: string }) => message.type === 'INSPECT' ? { ...pages.get(tabId), bookmarkSelected: pages.get(tabId)?.source === 'bookmarks', restricted: false } : { started: true },
+      sendMessage: async (tabId: number, message: { type: string; locations?: unknown }) => {
+        if (message.type === 'INSPECT') { inspections.push(message.locations); return { ...pages.get(tabId), bookmarkSelected: pages.get(tabId)?.source === 'bookmarks', restricted: false }; }
+        return { started: true };
+      },
       onRemoved: { addListener: vi.fn() }, onUpdated: { addListener: vi.fn() } },
   });
   await import('../../src/background');
@@ -22,6 +28,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   for (const store of [db, likesDB]) for (const table of store.tables) await table.clear();
   pages.clear();
+  inspections.length = 0;
   pages.set(1, { source: 'bookmarks', handle: 'sample', url: 'https://x.com/i/history' });
   pages.set(2, { source: 'likes', handle: 'sample', url: 'https://x.com/sample/likes' });
 });
@@ -77,4 +84,27 @@ it('persists a valid random range in the selected source and rejects an inverted
   expect(started.value).toMatchObject({ source: 'likes', intervalMs: 3000, intervalMaxMs: 8000 });
   expect(await likesDB.importRuns.get(started.value.id)).toMatchObject({ intervalMaxMs: 8000 });
   expect(await db.importRuns.count()).toBe(0);
+});
+
+it('uses saved custom URLs throughout a run, rejects overrides and keeps its start snapshot after settings changes', async () => {
+  const locations = { bookmarks: 'https://x.com/i/saved-posts', likes: 'https://x.com/i/liked-posts' };
+  pages.set(2, { source: 'likes', handle: 'sample', url: locations.likes });
+  expect((await send({ type: 'INSPECT_TAB', tabId: 2, locations })).ok).toBe(false);
+  expect((await send({ type: 'START', tabId: 2, source: 'likes', handle: 'sample', options: { intervalMs: 3000, maxPosts: 10, mode: 'full' }, locations })).ok).toBe(false);
+  expect(await likesDB.importRuns.count()).toBe(0);
+  await saveImportLocations(locations);
+  expect((await send({ type: 'INSPECT_TAB', tabId: 2 })).value.source).toBe('likes');
+  const started = await start(2, 'likes'); expect(started.ok).toBe(true);
+  expect(started.value.importLocations).toEqual(locations);
+  await saveImportLocations(DEFAULT_IMPORT_LOCATIONS);
+  const batch = { type: 'BATCH', runId: started.value.id, source: 'likes', sequence: 0, posts: [observation('1')] };
+  expect((await send(batch, { ...fromTab(2), url: 'https://evil.invalid/i/liked-posts' })).ok).toBe(false);
+  expect((await send(batch, { ...fromTab(2), documentId: 'different' })).ok).toBe(false);
+  expect((await send(batch, fromTab(2))).value.added).toBe(1);
+  expect(inspections.at(-1)).toEqual(locations);
+  expect(await db.posts.count()).toBe(0);
+  pages.set(2, { source: 'bookmarks', handle: 'sample', url: locations.bookmarks });
+  expect((await send({ ...batch, sequence: 1, posts: [observation('2')] }, fromTab(2))).value.reason).toBe('source_scope_changed');
+  expect(await likesDB.posts.count()).toBe(1);
+  expect((await send({ type: 'INSPECT_TAB', tabId: 2 })).ok).toBe(false);
 });

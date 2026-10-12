@@ -245,6 +245,10 @@ button.media-frame { cursor: zoom-in; }
 .panel p { font-size: 12px; }
 .panel .small { font-size: 11px; margin-top: 15px; margin-bottom: 0; }
 .settings-stack { display: flex; flex-direction: column; gap: 20px; }
+.import-locations-form { display: grid; gap: 16px; min-width: 0; }
+.import-locations-form label { display: grid; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.import-locations-form input { width: 100%; min-width: 0; }
+.import-locations-form .actions { flex-wrap: wrap; }
 .post-backup-export>label { max-width: 500px; }
 .post-backup-export select { max-width: 100%; }
 .backup-target-count { margin: 14px 0; color: var(--muted); font-size: 12px; }

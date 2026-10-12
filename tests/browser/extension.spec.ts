@@ -5,7 +5,8 @@ import { join, resolve } from 'node:path';
 
 // All https://x.com requests are fulfilled locally. The isolated test copy grants
 // the fixture origin so direct popup navigation can exercise messaging without a toolbar click.
-for (const { path, collection } of [{ path: '/i/bookmarks', collection: 'bookmarks' }, { path: '/i/history', collection: 'bookmarks' }, { path: '/i/history', collection: 'likes' }, { path: '/i/history/likes', collection: 'likes' }, { path: '/synthetic_user/likes', collection: 'likes' }]) test(`MV3 commits virtualized DOM batches on ${path} (${collection}) and preserves scope`, async () => {
+for (const { path, collection } of [{ path: '/i/bookmarks', collection: 'bookmarks' }, { path: '/i/history', collection: 'bookmarks' }, { path: '/i/history', collection: 'likes' }, { path: '/i/history/likes', collection: 'likes' }, { path: '/synthetic_user/likes', collection: 'likes' }, { path: '/i/saved-posts', collection: 'bookmarks' }, { path: '/i/liked-posts', collection: 'likes' }]) test(`MV3 commits virtualized DOM batches on ${path} (${collection}) and preserves scope`, async () => {
+  const custom = path === '/i/saved-posts' || path === '/i/liked-posts';
   const sourceUrl = `https://x.com${path}`;
   const temp = await mkdtemp(join(tmpdir(), 'xbs-extension-'));
   const extension = join(temp, 'extension');
@@ -42,6 +43,16 @@ for (const { path, collection } of [{ path: '/i/bookmarks', collection: 'bookmar
     await library.getByRole('navigation', { name: /^(Manage|管理)$/ }).getByRole('button', { name: /^(Settings|設定)$/ }).click();
     await expect(library.getByRole('combobox', { name: /^(Language|言語)$/ })).toHaveValue('system');
     await library.getByRole('combobox', { name: /^(Language|言語)$/ }).selectOption('ja');
+    if (custom) {
+      const section = library.getByRole('region', { name: '取得先URL', exact: true });
+      await section.getByLabel('ブックマークの取得先URL').fill('https://x.com/i/saved-posts');
+      await section.getByLabel('いいねの取得先URL').fill('https://x.com/i/liked-posts');
+      await section.getByRole('button', { name: 'URLを保存', exact: true }).click();
+      await expect(section.getByRole('status')).toContainText('保存しました');
+      await source.bringToFront(); await popup.reload();
+      await expect(popup.locator('.account')).toContainText('@synthetic_user');
+      await expect(popup.getByLabel('取り込み対象')).toHaveValue(collection);
+    }
     await expect(popup.locator('.popup')).toHaveCSS('width', '380px');
     await expect(popup.getByLabel('待機（秒）')).toHaveValue('3');
     await expect(popup.getByLabel('今回の上限（件）')).toHaveValue('100');
@@ -71,9 +82,27 @@ for (const { path, collection } of [{ path: '/i/bookmarks', collection: 'bookmar
       setTimeout(() => document.querySelector('[data-fixture="late-video"]')?.setAttribute('poster', 'https://pbs.twimg.com/amplify_video_thumb/123/img/late?format=webp&name=medium'), 1000);
       setTimeout(() => [3, 4].forEach(i => document.querySelector(`[data-fixture="photo-${i}"]`)?.setAttribute('src', `https://pbs.twimg.com/media/photo-${i}.jpg`)), 500);
     });
+    if (custom) {
+      // Change stored settings without hiding the X fixture. The running reader keeps its worker snapshot.
+      await popup.evaluate(async () => {
+        const database = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('x-bookmark-library'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+        try { await new Promise<void>((resolve, reject) => {
+          const transaction = database.transaction('settings', 'readwrite');
+          transaction.objectStore('settings').put({ key: 'importLocations', value: { bookmarks: 'https://x.com/i/bookmarks', likes: 'https://x.com/i/history/likes' } });
+          transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error);
+        }); } finally { database.close(); }
+      });
+    }
     await expect.poll(async () => popup.evaluate(async () => (await chrome.runtime.sendMessage({ type: 'STATUS', source: new URL(location.href).searchParams.get('source') ?? 'bookmarks' })).value?.reason), { timeout: 20000 }).toBe('run_limit');
     const status = await popup.evaluate(async () => (await chrome.runtime.sendMessage({ type: 'STATUS', source: new URL(location.href).searchParams.get('source') ?? 'bookmarks' })).value);
     expect(status.added).toBe(20); expect(status.nextSequence).toBe(3);
+    if (custom) {
+      expect(status.importLocations).toEqual({ bookmarks: 'https://x.com/i/saved-posts', likes: 'https://x.com/i/liked-posts' });
+      const inspect = await popup.evaluate(async url => {
+        const tabs = await chrome.tabs.query({ url }); return chrome.runtime.sendMessage({ type: 'INSPECT_TAB', tabId: tabs[0]!.id! });
+      }, sourceUrl);
+      expect(inspect.ok).toBe(false);
+    }
     await popup.reload();
     await expect(popup.getByText('保存確認 20件 · 新規 20件 · 既存 0件')).toBeVisible();
     await library.goto(`chrome-extension://${extensionId}/library.html?source=${collection}`);

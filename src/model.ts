@@ -41,8 +41,10 @@ export function orderedMarks<T extends Tag>(tags: readonly T[]): T[] {
   return tags.filter(t => t.mark).sort((a, b) => (isMarkOrder(a.markOrder) ? a.markOrder : MAX_MARKS) - (isMarkOrder(b.markOrder) ? b.markOrder : MAX_MARKS) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 export interface ImportOptions { intervalMs: number; intervalMaxMs?: number; maxPosts: number; mode: Mode }
+export interface ImportLocations { bookmarks: string; likes: string }
 export interface ImportRun extends ImportOptions {
   source?: LibrarySource; // Runs saved before source separation are bookmarks.
+  importLocations?: ImportLocations; // Immutable URL settings captured by the worker at start.
   id: string;
   tabId: number;
   documentId: string;

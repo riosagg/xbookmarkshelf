@@ -2,7 +2,9 @@ import { LanguageProvider, useI18n } from './i18n';
 import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { command } from './messaging';
-import { DEFAULT_OPTIONS, type ImportRun, type Mode, type LibrarySource, isLibrarySource, validHandle, librarySourceUrl, REASON_LABELS } from './model';
+import { DEFAULT_OPTIONS, type ImportRun, type Mode, type LibrarySource, isLibrarySource, validHandle, REASON_LABELS } from './model';
+import { useImportLocations } from './import-location-settings';
+import { importSourceUrl } from './import-locations';
 import { db } from './db';
 import { Icon } from './icons';
 import { NumericInput } from './numeric-input';
@@ -12,6 +14,7 @@ import './style.css';
 
 function Popup() {
   const { language, t: tr, message } = useI18n();
+  const { locations: importLocations } = useImportLocations();
   useEffect(() => { document.title = `${tr('取り込み')} — xbookmarkshelf`; }, [language]);
   const initial = new URL(location.href).searchParams.get('source');
   const [form, setForm] = useState(() => preferencesFromOptions(isLibrarySource(initial) ? initial : 'bookmarks', DEFAULT_OPTIONS));
@@ -106,7 +109,7 @@ function Popup() {
   const waitValid = Number.isInteger(interval * 1000) && interval >= 3 && interval <= 30 &&
     (waitMode === 'fixed' || (Number.isInteger(maximum * 1000) && maximum >= interval && maximum <= 30));
   const targetMatches = target?.source === source;
-  const sourceUrl = librarySourceUrl(source, target?.handle);
+  const sourceUrl = importSourceUrl(source, importLocations, target?.handle);
   const disabled = !ready || busy || run?.state === 'running';
   function changeSource(value: LibrarySource) {
     edit({ source: value }); setError('');

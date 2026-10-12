@@ -1,4 +1,5 @@
-import { type ObservedPost, type QuotedPost, type LibrarySource, validHandle, isLibraryUrl, isMediaUrl, mergeMedia } from './model';
+import { type ObservedPost, type QuotedPost, type LibrarySource, type ImportLocations, validHandle, isMediaUrl, mergeMedia } from './model';
+import { DEFAULT_IMPORT_LOCATIONS, configuredImportSource, isImportPageUrl } from './import-locations';
 import { webUrl, appendMissingLinks } from './text';
 
 function anchorUrl(anchor: Element): string | null {
@@ -66,18 +67,21 @@ function readMedia(article: Element): ObservedPost['media'] {
 export function bookmarkScope(document: Document, url: string): boolean {
   return libraryScope(document, url) === 'bookmarks';
 }
-export function libraryScope(document: Document, url: string): LibrarySource | null {
-  if (!isLibraryUrl(url)) return null;
+export function libraryScope(document: Document, url: string, locations: ImportLocations = DEFAULT_IMPORT_LOCATIONS): LibrarySource | null {
+  if (!isImportPageUrl(url, locations)) return null;
   const path = new URL(url).pathname;
   if (/^\/i\/bookmarks\/?$/.test(path)) return 'bookmarks';
   const owner = /^\/([a-zA-Z0-9_]{1,15})\/likes\/?$/.exec(path)?.[1];
   if (owner) return owner.toLowerCase() === readAccount(document) ? 'likes' : null;
-  const sources = Array.from(document.querySelectorAll('[role="tab"][aria-selected="true"]')).map(selected => {
+  const selectedTabs = Array.from(document.querySelectorAll('[role="tab"][aria-selected="true"]'));
+  const sources = selectedTabs.map(selected => {
     const label = (selected.getAttribute('aria-label') || selected.textContent || '').normalize('NFKC').trim();
     return /^(Bookmarks?|ブックマーク)$/i.test(label) ? 'bookmarks' as const : /^(Likes?|いいね)$/i.test(label) ? 'likes' as const : null;
   }).filter((source): source is LibrarySource => source !== null);
   if (/^\/i\/history\/likes\/?$/.test(path)) return sources.length === 0 || (sources.length === 1 && sources[0] === 'likes') ? 'likes' : null;
-  return sources.length === 1 ? sources[0]! : null;
+  if (/^\/i\/history\/?$/.test(path)) return sources.length === 1 ? sources[0]! : null;
+  const configured = configuredImportSource(url, locations);
+  return configured && (selectedTabs.length === 0 || (selectedTabs.length === 1 && sources[0] === configured)) ? configured : null;
 }
 function xPath(href: string | null | undefined): string | null {
   try { const u = new URL(href || '', 'https://x.com'); return u.origin === 'https://x.com' && !u.username && !u.password ? u.pathname : null; } catch { return null; }
