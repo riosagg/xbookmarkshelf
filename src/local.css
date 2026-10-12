@@ -1,0 +1,38 @@
+.local-source-switch { display: flex; gap: 4px; padding: 0 0 20px; }
+.local-source-switch button { display: flex; justify-content: center; align-items: center; gap: 4px; flex: 1; min-width: 0; font-size: 11px; padding: 9px 4px; background: transparent; white-space: nowrap; }
+.local-source-switch .icon { width: 14px; height: 14px; }
+.local-source-switch button[aria-pressed="true"] { background: var(--selected); border-color: var(--focus); }
+.local-file-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 24px; font-size: 11px; }
+.local-file-bar .viewer-filename { min-width: 0; max-width: 100%; }
+.local-file-bar .actions { margin-left: auto; flex-wrap: wrap; }
+.local-file-bar .small-button { font-size: 10px; }
+.local-dirty { color: var(--focus); }
+.local-save { flex-shrink: 0; }
+.local-extra-nav { margin-top: auto; padding-top: 20px; }
+.local-extra-nav .nav-item { font-size: 11px; }
+.local-layout .panel h2 { margin-top: 28px; }
+.local-layout .panel > .actions { margin-top: 20px; flex-wrap: wrap; }
+.local-layout .panel p { overflow-wrap: anywhere; }
+.local-layout .mark-manager .mark-item { flex-wrap: wrap; }
+.local-layout .mark-item .actions { flex-wrap: wrap; }
+.local-layout .mark-item .mark-open { min-width: 0; }
+.local-layout .symbol-options { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+.local-layout .viewer-welcome .actions { justify-content: center; flex-wrap: wrap; }
+.local-layout .viewer-welcome .local-welcome-secondary { margin-top: 16px; }
+.local-remembered-file { overflow-wrap: anywhere; }
+.local-resume-setting { margin-top: 24px; }
+.local-read { display: flex; align-items: center; gap: 4px; font-size: 10px; padding: 4px; }
+.local-post-note { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 9px; }
+.local-post-note:empty { display: none; }
+.local-capacity { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; font-size: 12px; }
+.local-capacity dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .local-source-switch { padding-bottom: 8px; max-width: 340px; }
+  .local-extra-nav { margin-top: 0; padding-top: 6px; }
+  .local-extra-nav .nav-item { max-width: 200px; }
+  .local-layout .topbar { gap: 8px; }
+  .local-layout .local-save { padding: 9px; font-size: 11px; }
+  .local-layout .symbol-options { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .local-file-bar .actions { margin-left: 0; }
+}
+.local-layout input[hidden] { display: none; }

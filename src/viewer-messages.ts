@@ -1,0 +1,33 @@
+export const viewerMessages = {
+  quote: ['引用', 'Quote'], openQuote: ['引用元を開く', 'Open quoted post'],
+  title: ['ファイルビューアー', 'File viewer'], open: ['ファイルを開く', 'Open file'], close: ['ファイルを閉じる', 'Close file'],
+  intro: ['手元のファイルから、投稿を読む。', 'Read posts from your own files.'],
+  instructions: ['Xアーカイブの data/like.js、またはxbookmarkshelfの投稿バックアップJSONを選んでください。', 'Choose data/like.js from your X archive, or a xbookmarkshelf posts backup JSON.'],
+  privacy: ['投稿はブラウザに保存しません。閉じる・再読み込みで表示をリセットします。', 'Posts are not saved in browser storage. Closing or reloading resets the viewer.'],
+  memory: ['開いている間はメモリを使います。20MiB・50,000件まで、表示は50件ずつ。', 'Uses memory while open. Up to 20 MiB and 50,000 posts, displayed 50 at a time.'],
+  readonly: ['閲覧専用 · 元ファイルは変更しません', 'Read only · Your file stays unchanged'],
+  all: ['すべての投稿', 'All posts'], unread: ['あとで読む', 'Read later'], unmarked: ['マークなし', 'Unmarked'], marks: ['マーク', 'Marks'],
+  search: ['本文・投稿者・URLを検索', 'Search text, author or URL'], filters: ['絞り込み', 'Filters'], reset: ['条件をリセット', 'Reset filters'],
+  author: ['投稿者', 'Author'], account: ['アカウント', 'Account'], tag: ['マーク・タグ', 'Mark or tag'],
+  media: ['メディア', 'Media'], links: ['本文URL', 'Text links'], read: ['既読', 'Read state'], any: ['すべて', 'All'],
+  with: ['あり', 'With'], without: ['なし', 'Without'], image: ['画像', 'Images'], video: ['動画', 'Videos'], marked: ['マークあり', 'Marked'],
+  readYes: ['既読', 'Read'], readNo: ['未読', 'Unread'], order: ['並び順', 'Order'], original: ['ファイルの順序', 'File order'], reverse: ['逆順', 'Reverse order'],
+  grid: ['カード表示', 'Card view'], list: ['リスト表示', 'List view'], columns: ['列数', 'Columns'], previews: ['画像プレビュー', 'Image previews'],
+  previewNote: ['画像ONでpbs.twimg.comへ通信します。通常の画像キャッシュはブラウザが管理します。', 'Images load from pbs.twimg.com when enabled. The browser manages its normal image cache.'],
+  theme: ['テーマ', 'Theme'], system: ['システムに従う', 'Follow system'], light: ['ライト', 'Light'], dark: ['ダーク', 'Dark'], language: ['言語', 'Language'],
+  likes: ['いいねアーカイブ', 'Likes archive'], backup: ['投稿バックアップ', 'Posts backup'],
+  likesNote: ['いいねのファイルには投稿者名・日時・画像が含まれない場合があります。元投稿の情報は自動取得しません。', 'Likes files may omit authors, dates and media. The viewer does not fetch missing post information.'],
+  count: ['件', 'posts'], results: ['検索結果', 'Results'], duplicates: ['重複を除外', 'Duplicates excluded'], empty: ['条件に合う投稿はありません', 'No posts match these filters'],
+  loading: ['ファイルを読み込んでいます…', 'Reading file…'], sizeError: ['ファイルは20MiBまでです。', 'The file must be 20 MiB or smaller.'],
+  formatError: ['対応するJSONまたはlike.jsではありません。JSは実行しません。', 'Unsupported JSON or like.js. JavaScript is never executed.'],
+  recordsError: ['投稿の形式・URL・件数・分類の関連を確認できませんでした。', 'Invalid post format, URL, count or classification relationships.'],
+  fileError: ['ファイルを読み込めませんでした。選び直してください。', 'Could not read the file. Please select it again.'],
+  detail: ['投稿の詳細', 'Post details'], closeDetail: ['詳細を閉じる', 'Close details'], noAuthor: ['投稿者情報なし', 'Author unavailable'], noText: ['本文なし', 'No text'],
+  originalPost: ['Xで開く', 'Open on X'], previous: ['前のページ', 'Previous page'], next: ['次のページ', 'Next page'], page: ['ページ', 'Page'],
+  imageOff: ['画像プレビューはオフ', 'Image previews are off'], imageFailed: ['画像を読み込めませんでした', 'Could not load image'],
+  previousMedia: ['前のメディア', 'Previous media'], nextMedia: ['次のメディア', 'Next media'], videoOnX: ['Xで動画を見る', 'Watch video on X'],
+  licenses: ['ライセンス', 'Licenses'], choose: ['ファイルを選択', 'Choose file'],
+} as const;
+export type ViewerMessage = keyof typeof viewerMessages;
+export type ViewerLanguage = 'ja' | 'en';
+export function viewerText(key: ViewerMessage, language: ViewerLanguage) { return viewerMessages[key][language === 'ja' ? 0 : 1]; }

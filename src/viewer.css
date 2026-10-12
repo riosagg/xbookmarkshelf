@@ -1,0 +1,45 @@
+/* The initial background follows the OS before any script runs. No theme cache. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --danger: #ffadb3; --danger-bg: #3b2027; color-scheme: dark;
+    --bg: #101318; --surface: #191d24; --surface-muted: #161a21; --text: #e7ebf0;
+    --muted: #a0aab8; --line: #2d333e; --hover: #252b35; --selected: #2a3442;
+    --primary: #e7ebf0; --on-primary: #19202a; --chip: #29313c; --focus: #79b7f5;
+    --success: #79c7a3; color: var(--text); background: var(--bg);
+  }
+  :root:not([data-theme="light"]) .error { color: #f5afa5; background: #36241f; border-color: #55352e; }
+  :root:not([data-theme="light"]) .notice { color: #a6dfbd; background: #20332a; border-color: #35533f; }
+}
+.viewer-preferences { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.viewer-layout .brand { align-items: center; flex-shrink: 0; }
+.viewer-preferences label { font-size: 10px; color: var(--muted); max-width: 48%; }
+.viewer-preferences select { font-size: 11px; margin-top: 5px; }
+.viewer-welcome { margin: 50px auto; max-width: 740px; padding: 65px 32px; }
+.viewer-welcome h1 { margin-bottom: 16px; }
+.viewer-welcome p { margin: 18px auto; max-width: 520px; }
+.viewer-welcome .primary { margin: 8px 0; }
+.viewer-filename { overflow-wrap: anywhere; }
+.viewer-layout .page-heading>div { min-width: 0; }
+.viewer-layout .page-heading>button { flex: none; }
+.viewer-post-summary { display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; border: 0; padding: 0; margin: 0 0 16px; background: transparent; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; width: 100%; line-height: 1.85; font-size: 13px; font-weight: 400; }
+.viewer-post-summary:hover { color: var(--focus); background: transparent; }
+.view-list .viewer-post-summary { -webkit-line-clamp: 3; }
+.viewer-layout .filter-panel summary { cursor: pointer; font-size: 12px; }
+.viewer-layout .filter-fields { margin: 16px 0; }
+.viewer-preview-setting { margin: 0 0 20px; }
+.viewer-preview-setting p { font-size: 10px; margin: 6px 0 0; }
+.viewer-layout .sidebar-footer { align-items: start; }
+.viewer-layout .local-status { line-height: 1.8; align-items: start; }
+.viewer-layout .local-status .icon { margin-top: 3px; }
+.viewer-licenses { max-width: 900px; padding: 0 24px 24px; margin: 0 auto; color: var(--muted); font-size: 11px; }
+.viewer-licenses pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 10px; line-height: 1.6; }
+@media (max-width: 760px) {
+  .viewer-layout .side-tags { display: flex; }
+  .viewer-layout .side-marks .nav-caption { flex: none; }
+  .viewer-layout .side-marks .nav-item { max-width: 170px; }
+  .viewer-open { padding: 9px; }
+  .viewer-open span { display: none; }
+  .viewer-layout .page-heading { align-items: start; flex-direction: column; }
+  .viewer-layout .pagination { align-items: start; flex-direction: column; }
+  .viewer-welcome { margin: 20px 0; padding: 35px 16px; }
+}
