@@ -26,6 +26,7 @@ export const viewerMessages = {
   detail: ['投稿の詳細', 'Post details'], closeDetail: ['詳細を閉じる', 'Close details'], noAuthor: ['投稿者情報なし', 'Author unavailable'], noText: ['本文なし', 'No text'],
   originalPost: ['Xで開く', 'Open on X'], previous: ['前のページ', 'Previous page'], next: ['次のページ', 'Next page'], page: ['ページ', 'Page'],
   imageOff: ['画像プレビューはオフ', 'Image previews are off'], imageFailed: ['画像を読み込めませんでした', 'Could not load image'],
+  enlargeMedia: ['メディアを大きく見る', 'Enlarge media'],
   previousMedia: ['前のメディア', 'Previous media'], nextMedia: ['次のメディア', 'Next media'], videoOnX: ['Xで動画を見る', 'Watch video on X'],
   licenses: ['ライセンス', 'Licenses'], choose: ['ファイルを選択', 'Choose file'],
 } as const;

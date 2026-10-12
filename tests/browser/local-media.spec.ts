@@ -1,0 +1,77 @@
+import { expect, test } from './fixtures';
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
+import { viewerBackup } from '../viewer-fixtures';
+import { emptyLocalLibrary, mergeLocalImport, parseLocalImport } from '../../src/local-data';
+
+const localUrl = pathToFileURL(resolve('local-dist/xbookmarkshelf-local.html')).href;
+for (const source of ['bookmarks', 'likes'] as const) {
+  test(`local ${source} images enlarge from the selected position and keep edits, preview boundaries and navigation`, async ({ page }) => {
+    const value = viewerBackup();
+    value.posts[1]!.text += ' LongUnbrokenText'.repeat(300);
+    value.posts[1]!.media = [1, 2, 3, 4].map(i => ({ kind: i === 4 ? 'video' : 'image', url: `https://pbs.twimg.com/media/local-gallery-${i}.jpg` }));
+    const { library } = mergeLocalImport(emptyLocalLibrary(), parseLocalImport(JSON.stringify(value)));
+    library.libraries.likes = structuredClone(library.libraries.bookmarks);
+    const requests: string[] = [];
+    page.on('request', request => { if (request.url().startsWith('https://pbs.twimg.com/')) requests.push(request.url()); });
+    await page.route('https://pbs.twimg.com/**', route => route.request().url().includes('local-gallery-3')
+      ? route.fulfill({ status: 404, body: '' })
+      : route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420"><rect width="640" height="420" fill="#395878"/></svg>' }));
+    await page.goto(localUrl);
+    await page.locator('input[multiple]').setInputFiles({ name: 'synthetic-library.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(library)) });
+    await expect(page.locator('.card-grid .post-card')).toHaveCount(3);
+    await page.getByRole('button', { name: source === 'likes' ? 'いいね' : 'ブックマーク', exact: true }).click();
+    const card = page.locator('.card-grid [data-post-key="a:2"]');
+    const dialog = page.getByRole('dialog', { name: '投稿の詳細', exact: true });
+    await card.locator('.media-next').click();
+    await expect(dialog).toHaveCount(0);
+    await card.locator('.media-frame').focus(); await page.keyboard.press('Enter');
+    await expect(dialog.locator('.media-count')).toHaveText('2 / 4');
+    await expect(dialog.locator('.card-media img')).toHaveCount(0); expect(requests).toEqual([]);
+    await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0);
+    await page.getByLabel('画像プレビュー', { exact: true }).check();
+    await expect(card.locator('.card-media img')).toHaveAttribute('src', /local-gallery-2/);
+    await card.locator('.card-media img').click();
+    await expect(dialog.locator('.media-count')).toHaveText('2 / 4');
+    await expect(dialog.locator('.card-media img')).toHaveCSS('object-fit', 'contain');
+    await expect(dialog.getByRole('button', { name: '未読に戻す', exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: '資料のマーク', exact: true }).click();
+    await dialog.getByRole('button', { name: '未読に戻す', exact: true }).click();
+    await expect(dialog.locator('.media-count')).toHaveText('2 / 4');
+    await expect(dialog.locator('.card-media img')).toHaveAttribute('src', /local-gallery-2/);
+    await dialog.locator('.media-next').click();
+    await expect(dialog.locator('.card-media')).toContainText('画像を読み込めませんでした');
+    await dialog.locator('.media-next').click();
+    await expect(dialog.locator('.card-media img')).toHaveAttribute('src', /local-gallery-4/);
+    await expect(dialog.locator('.video-action')).toHaveAttribute('href', value.posts[1]!.url);
+    await expect(dialog.locator('video')).toHaveCount(0);
+    await dialog.locator('.card-media').focus(); await page.keyboard.press('ArrowLeft');
+    await expect(dialog.locator('.media-count')).toHaveText('3 / 4');
+    await page.keyboard.press('ArrowLeft'); await expect(dialog.locator('.media-count')).toHaveText('2 / 4');
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth && el.getBoundingClientRect().right <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/local-${source}-image-popup.png` });
+    await dialog.getByRole('button', { name: '詳細を閉じる', exact: true }).click();
+    await expect(card.locator('.media-count')).toHaveText('2 / 4');
+    await expect(card.getByRole('button', { name: '資料のマーク', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(card.getByRole('button', { name: '既読にする', exact: true })).toBeVisible();
+    await card.locator('.viewer-post-summary').click();
+    await expect(dialog.locator('.media-count')).toHaveText('1 / 4');
+    await dialog.getByRole('button', { name: '詳細を閉じる', exact: true }).click();
+    await page.getByRole('button', { name: 'リスト表示', exact: true }).click();
+    await expect(card.locator('.media-count')).toHaveText('2 / 4'); await card.locator('.media-frame').click();
+    await expect(dialog.locator('.media-count')).toHaveText('2 / 4');
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth && el.getBoundingClientRect().right <= innerWidth)).toBe(true);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: source === 'likes' ? 'ブックマーク' : 'いいね', exact: true }).click();
+    await expect(card.locator('.media-count')).toHaveText('1 / 4');
+    await expect(card.getByRole('button', { name: '資料のマーク', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    await expect(card.getByRole('button', { name: '既読にする', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '設定', exact: true }).click();
+    await page.getByLabel('言語', { exact: true }).selectOption('en');
+    await page.getByRole('button', { name: source === 'likes' ? /^All bookmarks/ : /^All likes/ }).click();
+    await card.getByRole('button', { name: 'Enlarge media 1 / 4', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Post details', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Close details', exact: true }).click();
+  });
+}

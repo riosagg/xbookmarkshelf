@@ -21,19 +21,24 @@ function Preview({ url, enabled, tr }: { url: string; enabled: boolean; tr: Tran
   return enabled && !failed ? <img src={url} alt={tr('image')} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)}/> :
     <div class="media-placeholder"><Icon name="image"/><span>{tr(failed ? 'imageFailed' : 'imageOff')}</span></div>;
 }
-export function PostCard({ post, expanded = false, previews, tr, locale, open, tag, actions, readAction, annotation }: {
-  post: ViewerPost; expanded?: boolean; previews: boolean; tr: Translate; locale: string;
-  open(post: ViewerPost): void; tag(id: string): void;
+export function PostCard({ post, expanded = false, initialIndex = 0, previews, tr, locale, open, tag, actions, readAction, annotation }: {
+  post: ViewerPost; expanded?: boolean; initialIndex?: number; previews: boolean; tr: Translate; locale: string;
+  open(post: ViewerPost, index?: number): void; tag(id: string): void;
   actions?: ComponentChildren; readAction?: ComponentChildren; annotation?: ComponentChildren;
 }) {
-  const [selected, setIndex] = useState(0);
+  const [selected, setIndex] = useState(initialIndex);
   const index = Math.max(0, Math.min(selected, post.media.length - 1)); const media = post.media[index];
-  useEffect(() => { setIndex(0); }, [post.key]);
+  useEffect(() => { setIndex(initialIndex); }, [post.key, initialIndex]);
   useEffect(() => { setIndex(current => Math.max(0, Math.min(current, post.media.length - 1))); }, [post.media.length]);
   return <article class="post-card" data-post-key={post.key}>
-    {media && <div class="card-media" role="region" aria-label={tr('media')}>
-      <Preview url={media.url} enabled={previews} tr={tr}/>
-      {post.media.length > 1 && <><span class="media-count">{index + 1} / {post.media.length}</span>
+    {media && <div class="card-media" role="region" aria-label={tr('media')} tabIndex={post.media.length > 1 ? 0 : undefined} onKeyDown={event => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault(); setIndex(Math.max(0, Math.min(post.media.length - 1, index + (event.key === 'ArrowRight' ? 1 : -1))));
+      }
+    }}>
+      {expanded ? <div class="media-frame"><Preview key={media.url} url={media.url} enabled={previews} tr={tr}/></div> :
+        <button class="media-frame" aria-label={`${tr('enlargeMedia')} ${index + 1} / ${post.media.length}`} onClick={() => open(post, index)}><Preview key={media.url} url={media.url} enabled={previews} tr={tr}/></button>}
+      {post.media.length > 1 && <><span class="media-count" aria-live="polite" aria-atomic="true">{index + 1} / {post.media.length}</span>
         <button class="media-prev" aria-label={tr('previousMedia')} disabled={index === 0} onClick={() => setIndex(index - 1)}><Icon name="chevron"/></button>
         <button class="media-next" aria-label={tr('nextMedia')} disabled={index === post.media.length - 1} onClick={() => setIndex(index + 1)}><Icon name="chevron"/></button></>}
       {media.kind === 'video' && <a class="video-action" href={post.url} target="_blank" rel="noopener noreferrer"><Icon name="play"/>{tr('videoOnX')}</a>}
@@ -60,13 +65,13 @@ export function PostCard({ post, expanded = false, previews, tr, locale, open, t
     </div>
   </article>;
 }
-export function Detail({ post, previews, tr, locale, close, tag, actions, readAction, annotation, editor }: { post: ViewerPost; previews: boolean; tr: Translate; locale: string; close(): void; tag(id: string): void;
+export function Detail({ post, initialIndex = 0, previews, tr, locale, close, tag, actions, readAction, annotation, editor }: { post: ViewerPost; initialIndex?: number; previews: boolean; tr: Translate; locale: string; close(): void; tag(id: string): void;
   actions?: ComponentChildren; readAction?: ComponentChildren; annotation?: ComponentChildren; editor?: ComponentChildren }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => { ref.current?.showModal(); }, []);
   return <dialog ref={ref} class="post-dialog" aria-label={tr('detail')} onClose={close} onClick={e => { if (e.target === e.currentTarget) close(); }}>
     <div class="dialog-header"><strong>{tr('detail')}</strong><button autoFocus class="icon-button" aria-label={tr('closeDetail')} onClick={close}><Icon name="close"/></button></div>
-    <PostCard post={post} expanded previews={previews} tr={tr} locale={locale} open={() => {}} tag={tag} actions={actions} readAction={readAction} annotation={annotation}/>
+    <PostCard post={post} expanded initialIndex={initialIndex} previews={previews} tr={tr} locale={locale} open={() => {}} tag={tag} actions={actions} readAction={readAction} annotation={annotation}/>
     {editor}
   </dialog>;
 }

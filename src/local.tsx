@@ -33,6 +33,7 @@ function App() {
   const tr: LocalTranslate = key => localText(key, language); const locale = language === 'ja' ? 'ja-JP' : 'en-US';
   const [filters, setFilters] = useState<ViewerFilters>({ ...EMPTY_VIEWER_FILTERS }); const [query, setQuery] = useState(''); const [author, setAuthor] = useState('');
   const [from, setFrom] = useState(''); const [to, setTo] = useState(''); const [detailKey, setDetailKey] = useState<string | null>(null);
+  const [detailMediaIndex, setDetailMediaIndex] = useState(0);
   const [previews, setPreviews] = useState(false); const [scope, setScope] = useState('current');
   const [remembered, setRemembered] = useState<LocalFileHandle | null>(null); const [memoryError, setMemoryError] = useState(false);
   const importInput = useRef<HTMLInputElement>(null); const openInput = useRef<HTMLInputElement>(null);
@@ -160,7 +161,7 @@ function App() {
   const marks = orderedMarks(collection?.tags ?? []); const sidebarMarks = marks.filter(t => !filters.account || t.accountId === filters.account);
   const tagLabel = (id: string) => { const t = collection?.tags.find(t => t.id === id); const a = collection?.accounts.find(a => a.id === t?.accountId);
     return t ? `${t.name}${(collection?.accounts.length ?? 0) > 1 ? ` · @${a?.handle}` : ''}` : tr('all'); };
-  function openPost(p: ViewerPost) { if (busyRef.current || !library.current) return; if (!p.read) mutate(() => setLocalRead(library.current!, source, p.key, true)); setDetailKey(p.key); }
+  function openPost(p: ViewerPost, mediaIndex = 0) { if (busyRef.current || !library.current) return; if (!p.read) mutate(() => setLocalRead(library.current!, source, p.key, true)); setDetailMediaIndex(mediaIndex); setDetailKey(p.key); }
   const actions = (p: ViewerPost) => <LocalQuickMarks marks={marks.filter(t => t.accountId === p.accountId)} post={p} tr={tr} disabled={busy} toggle={id => mutate(() => toggleLocalMark(library.current!, source, p.key, id))}/>;
   const readAction = (p: ViewerPost) => <button class="text-button local-read" aria-label={tr(p.read ? 'makeUnread' : 'makeRead')} disabled={busy} onClick={() => mutate(() => setLocalRead(library.current!, source, p.key, !p.read))}><Icon name={p.read ? 'check' : 'unread'}/>{tr(p.read ? 'readYes' : 'readNo')}</button>;
   const annotation = (p: ViewerPost) => <div class="local-post-note small muted">{p.mediaStatus === 'unknown' && <span>{tr('unknownMedia')}</span>}{p.dateSource === 'id' && <span title={p.postedAt ?? ''}>{tr('idDate')}</span>}</div>;
@@ -221,7 +222,7 @@ function App() {
         </>}
       </>}
     </main></div>
-    {detail && lib && <Detail key={`${source}:${detail.key}`} post={detail} previews={previews} tr={tr} locale={locale} close={() => setDetailKey(null)} tag={chooseTag} actions={actions(detail)} readAction={readAction(detail)} annotation={annotation(detail)}/>}
+    {detail && lib && <Detail key={`${source}:${detail.key}`} post={detail} initialIndex={detailMediaIndex} previews={previews} tr={tr} locale={locale} close={() => setDetailKey(null)} tag={chooseTag} actions={actions(detail)} readAction={readAction(detail)} annotation={annotation(detail)}/>}
   </div>;
 }
 render(<App/>, document.getElementById('app')!);
