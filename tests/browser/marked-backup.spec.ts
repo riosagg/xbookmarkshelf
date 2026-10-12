@@ -28,7 +28,7 @@ test('mark backup shows exact scope, downloads complete dependencies and restore
   await expect(panel).toContainText('1件が対象です');
   const download = page.waitForEvent('download');
   await panel.getByRole('button', { name: 'このマークの投稿をバックアップ', exact: true }).click();
-  const file = await download; expect(file.suggestedFilename()).toContain('mark-同じマーク-');
+  const file = await download; expect(file.suggestedFilename()).toMatch(/^xbookmarkshelf-bookmarks-mark-同じマーク-/);
   const bytes = await readFile((await file.path())!); const backup = JSON.parse(bytes.toString('utf8'));
   expect(backup.posts.map((post: { accountId: string; postId: string }) => [post.accountId, post.postId])).toEqual([['a', '1']]);
   expect(backup.tags.map((tag: { id: string }) => tag.id).sort()).toEqual(['also', 'tag', 'target']);

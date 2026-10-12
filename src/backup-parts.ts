@@ -13,7 +13,7 @@ function rowKey(field: Field, row: Row): string {
 export interface BackupFile { name: string; text: string; posts: number }
 export function postBackupFilename(markName?: string, date = new Date().toISOString().slice(0, 10), source: 'bookmarks' | 'likes' = 'bookmarks'): string {
   const safe = markName === undefined ? '' : Array.from(markName.replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g, '_').trim()).slice(0, 40).join('') || 'marked';
-  return `xbookmarkshelf-${source === 'likes' ? 'likes' : 'posts'}-${markName === undefined ? '' : `mark-${safe}-`}${date}.json`;
+  return `xbookmarkshelf-${source}-${markName === undefined ? '' : `mark-${safe}-`}${date}.json`;
 }
 
 // Used only for trusted in-memory snapshots. File readers retain the default per-file limits.

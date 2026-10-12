@@ -142,7 +142,7 @@ function App() {
     try {
       const selected = scope !== 'entire'; const mark = scope !== 'current' && scope !== 'entire' ? scope : undefined;
       if (extension) {
-        const files = prepareBackupFiles(localBookmarksBackup(lib, mark)).map(file => ({ ...file, name: file.name.replace('xbookmarkshelf-posts-', 'xbookmarkshelf-posts-local-') }));
+        const files = prepareBackupFiles(localBookmarksBackup(lib, mark)).map(file => ({ ...file, name: file.name.replace('xbookmarkshelf-bookmarks-', 'xbookmarkshelf-bookmarks-local-') }));
         if (files.length === 1) downloadBackupFile(files[0]!); else { setExportFiles(files); setNotice(tr('splitExport')); }
       } else {
         const value = serializeLocalLibrary(localBackup(lib, selected ? source : undefined, mark));

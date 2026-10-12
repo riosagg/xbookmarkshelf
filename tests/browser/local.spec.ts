@@ -130,6 +130,7 @@ test('scoped JSON backups download and the bookmarks format remains compatible',
   const local = JSON.parse(await readFile((await downloaded.path())!, 'utf8')) as LocalLibrary;
   expect(local.libraries.bookmarks.posts).toHaveLength(1); expect(local.libraries.likes.posts).toHaveLength(0); expect(local.libraries.bookmarks.tags).toHaveLength(2);
   pending = page.waitForEvent('download'); await page.getByRole('button', { name: '拡張用の投稿JSONを出力', exact: true }).click(); downloaded = await pending;
+  expect(downloaded.suggestedFilename()).toMatch(/^xbookmarkshelf-bookmarks-local-\d{4}-\d{2}-\d{2}\.json$/);
   const posts = JSON.parse(await readFile((await downloaded.path())!, 'utf8')); expect(posts.format).toBe('x-bookmark-library'); expect(posts.posts).toHaveLength(1); expect(posts.userStates[0].favorite).toBe(true);
   await add(page, likesScript(3)); await backup(page); await page.getByLabel('バックアップの範囲', { exact: true }).selectOption('entire');
   pending = page.waitForEvent('download'); await page.getByRole('button', { name: '管理JSONをバックアップ', exact: true }).click(); downloaded = await pending;

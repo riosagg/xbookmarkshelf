@@ -75,6 +75,7 @@ logs/
 cache/
 *.log
 xbookmarkshelf-posts-*.json
+xbookmarkshelf-bookmarks-*.json
 xbookmarkshelf-likes-*.json
 xbookmarkshelf-settings-*.json
 xbookmarkshelf-library*.json

@@ -90,10 +90,11 @@ it('rejects invalid related data rather than silently producing an unrestorable 
   await expect(createMarkedBackup('target', store)).rejects.toThrow('タグの関連が不正');
   expect(await snapshot()).toEqual(before);
 });
-it('keeps the full-backup filename and makes hostile or long mark names safe for Windows files', () => {
-  expect(postBackupFilename(undefined, '2026-10-11')).toBe('xbookmarkshelf-posts-2026-10-11.json');
+it('names bookmarks and likes explicitly and makes hostile or long mark names safe for Windows files', () => {
+  expect(postBackupFilename(undefined, '2026-10-11')).toBe('xbookmarkshelf-bookmarks-2026-10-11.json');
+  expect(postBackupFilename(undefined, '2026-10-11', 'likes')).toBe('xbookmarkshelf-likes-2026-10-11.json');
   const name = postBackupFilename('../../CON:<script>\\folder\n?*|"', '2026-10-11');
-  expect(name).toMatch(/^xbookmarkshelf-posts-mark-/); expect(name).toMatch(/-2026-10-11\.json$/);
+  expect(name).toMatch(/^xbookmarkshelf-bookmarks-mark-/); expect(name).toMatch(/-2026-10-11\.json$/);
   expect(name).not.toMatch(/[<>:"/\\|?*\u0000-\u001f]/);
   expect(postBackupFilename('長'.repeat(100), '2026-10-11')).toContain('長'.repeat(40));
   expect(postBackupFilename('長'.repeat(100), '2026-10-11')).not.toContain('長'.repeat(41));
