@@ -91,6 +91,7 @@ export const english = {
   'アイコンをクリックしてマークを付与・解除': 'Click an icon to add or remove a mark',
   'マークを登録して仕分ける': 'Create marks to organize posts', '並び順': 'Sort order',
   '新しく保存した順': 'Newest saved first', '古く保存した順': 'Oldest saved first',
+  '投稿日が新しい順': 'Newest post first', '投稿日が古い順': 'Oldest post first',
   '表示列数': 'Columns', '{count}列': '{count} columns', 'カード表示': 'Card view', 'リスト表示': 'List view',
   '一致する投稿がありません': 'No matching posts', '最初のブックマークを取り込もう': 'Import your first bookmarks',
   '検索キーワードや絞り込み条件を変えてみてください。': 'Try changing your search or filters.',

@@ -26,6 +26,7 @@ import { initialTheme, applyTheme, type Theme } from './theme';
 import './style.css';
 import { LibraryStore, useLibraryDB } from './library-store';
 import { PostFeed, usePostFeed } from './post-feed';
+import { isPostDateOrder, type PostDateOrder } from './post-order';
 
 type View = 'all' | 'marks' | 'unread' | 'unmarked' | 'import' | 'backup' | 'settings';
 type Metadata = Awaited<ReturnType<typeof libraryMetadata>>;
@@ -186,7 +187,7 @@ function Library({ source, onSource }: { source: LibrarySource; onSource(source:
   const [author, setAuthor] = useState(''); const [authorSearch, setAuthorSearch] = useState('');
   const [mediaFilter, setMediaFilter] = useState('all'); const [markFilter, setMarkFilter] = useState('all'); const [linkFilter, setLinkFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState(''); const [dateTo, setDateTo] = useState(''); const [legacyFavorite, setLegacyFavorite] = useState(false);
-  const [tagId, setTagId] = useState(''); const [readFilter, setReadFilter] = useState('all'); const [oldest, setOldest] = useState(false);
+  const [tagId, setTagId] = useState(''); const [readFilter, setReadFilter] = useState('all'); const [sort, setSort] = useState<'newest' | 'oldest' | PostDateOrder>('newest');
   const [loadedKey, setLoadedKey] = useState(''); const [loadedStart, setLoadedStart] = useState(0); const [total, setTotal] = useState(0); const [posts, setPosts] = useState<Post[]>([]);
   const [meta, setMeta] = useState<Metadata>({ total: 0, unmarked: 0, unread: 0, favorites: 0, tags: [] });
   const [run, setRun] = useState<ImportRun>(); const [error, setError] = useState(''); const [notice, setNotice] = useState<UIMessage>('');
@@ -197,7 +198,7 @@ function Library({ source, onSource }: { source: LibrarySource; onSource(source:
   const [columns, setColumns] = useState(3); const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [theme, setTheme] = useState<Theme>(initialTheme); const [previews, setPreviews] = useState(false); const searchInput = useRef<HTMLInputElement>(null);
   const gallery = ['all', 'unread', 'unmarked'].includes(view);
-  const listKey = JSON.stringify([source, view, accountId, search, readFilter, tagId, oldest, authorSearch, mediaFilter, markFilter, linkFilter, dateFrom, dateTo, legacyFavorite]);
+  const listKey = JSON.stringify([source, view, accountId, search, readFilter, tagId, sort, authorSearch, mediaFilter, markFilter, linkFilter, dateFrom, dateTo, legacyFavorite]);
   const feed = usePostFeed({ total, resetKey: listKey, columns, layout, previews, ready: loadedKey === listKey, loadedStart });
   const visiblePosts = feed.ready ? posts : [];
   const markTags = orderedMarks(meta.tags);
@@ -205,7 +206,7 @@ function Library({ source, onSource }: { source: LibrarySource; onSource(source:
   const filtered = !!(accountId || author || tagId || readFilter !== 'all' || view === 'unread' || view === 'unmarked' || mediaFilter !== 'all' || markFilter !== 'all' || linkFilter !== 'all' || dateFrom || dateTo || legacyFavorite);
   const selectedTag = meta.tags.find(t => t.id === tagId);
   const bump = () => setRefresh(n => n + 1);
-  useEffect(() => { setSelected(new Set()); }, [view, accountId, query, feed.start, readFilter, tagId, oldest, author, mediaFilter, markFilter, linkFilter, dateFrom, dateTo, legacyFavorite]);
+  useEffect(() => { setSelected(new Set()); }, [view, accountId, query, feed.start, readFilter, tagId, sort, author, mediaFilter, markFilter, linkFilter, dateFrom, dateTo, legacyFavorite]);
   function selectPost(post: Post, checked: boolean) {
     setSelected(current => { const next = new Set(current); const key = selectionKey([post.accountId, post.postId]); if (checked) next.add(key); else next.delete(key); return next; });
   }
@@ -249,7 +250,7 @@ function Library({ source, onSource }: { source: LibrarySource; onSource(source:
     const load = async () => {
       const ticket = ++request;
       const [result, metadata, settings, latest] = await Promise.all([
-        windowPosts(accountId, search, feed.start, 50, { favorite: legacyFavorite, read: view === 'unread' ? false : readFilter === 'all' ? undefined : readFilter === 'read', tagId: tagId || undefined, oldestFirst: oldest, author: authorSearch, media: mediaFilter === 'all' ? undefined : mediaFilter as 'with' | 'without' | 'image' | 'video', mark: view === 'unmarked' ? 'without' : markFilter === 'all' ? undefined : markFilter as 'with' | 'without', links: linkFilter === 'all' ? undefined : linkFilter === 'with', postedFrom: dateFrom ? new Date(`${dateFrom}T00:00:00`).toISOString() : undefined, postedBefore: dateTo ? nextDay(dateTo) : undefined }, db),
+        windowPosts(accountId, search, feed.start, 50, { favorite: legacyFavorite, read: view === 'unread' ? false : readFilter === 'all' ? undefined : readFilter === 'read', tagId: tagId || undefined, oldestFirst: sort === 'oldest', postedOrder: isPostDateOrder(sort) ? sort : undefined, author: authorSearch, media: mediaFilter === 'all' ? undefined : mediaFilter as 'with' | 'without' | 'image' | 'video', mark: view === 'unmarked' ? 'without' : markFilter === 'all' ? undefined : markFilter as 'with' | 'without', links: linkFilter === 'all' ? undefined : linkFilter === 'with', postedFrom: dateFrom ? new Date(`${dateFrom}T00:00:00`).toISOString() : undefined, postedBefore: dateTo ? nextDay(dateTo) : undefined }, db),
         libraryMetadata(accountId, db), db.settings.get('accounts'), db.importRuns.orderBy('startedAt').reverse().first(),
       ]);
       if (active && ticket === request) {
@@ -261,7 +262,7 @@ function Library({ source, onSource }: { source: LibrarySource; onSource(source:
     void load().catch(() => { if (active) setError('保存データを読み込めません'); });
     const timer = setInterval(() => { if (!document.hidden) void load().catch(() => {}); }, 3000);
     return () => { active = false; clearInterval(timer); };
-  }, [accountId, search, feed.start, refresh, view, readFilter, tagId, oldest, authorSearch, mediaFilter, markFilter, linkFilter, dateFrom, dateTo, legacyFavorite]);
+  }, [accountId, search, feed.start, refresh, view, readFilter, tagId, sort, authorSearch, mediaFilter, markFilter, linkFilter, dateFrom, dateTo, legacyFavorite]);
   function navigate(next: View) { setView(next); setTagId(''); setReadFilter('all'); setMarkFilter('all'); setNotice(''); }
   function filterTag(id: string) { setView('all'); setTagId(id); setMarkFilter('all'); setReadFilter('all'); }
   function resetFilters() { setAccountId(''); setAuthor(''); setTagId(''); setReadFilter('all'); setMarkFilter('all'); setMediaFilter('all'); setLinkFilter('all'); setDateFrom(''); setDateTo(''); setLegacyFavorite(false); setView('all'); }
@@ -346,7 +347,7 @@ function Library({ source, onSource }: { source: LibrarySource; onSource(source:
             {meta.favorites > 0 && <label>{tr("以前のお気に入り")}<select aria-label={tr("以前のお気に入り")} value={legacyFavorite ? 'favorite' : 'all'} onChange={e => { setLegacyFavorite(e.currentTarget.value === 'favorite'); }}><option value="all">{tr("絞り込みなし")}</option><option value="favorite">{tr("以前のお気に入りのみ")}</option></select></label>}
           </div>{rangeError && <p class="error" role="alert">{tr("開始日は終了日以前にしてください。")}</p>}{selectedTag && <button class="filter-chip" title={selectedTag.name} onClick={() => { setTagId(''); }}><Icon name={selectedTag.mark || 'tag'}/>{selectedTag.name}<Icon name="close"/></button>}</section>
           <div class="toolbar"><span class="muted small">{markTags.length ? tr("アイコンをクリックしてマークを付与・解除") : <button class="text-button" onClick={() => navigate('marks')}>{tr("マークを登録して仕分ける")}</button>}</span>
-            <div class="display-controls"><label class="sr-only" for="sort-order">{tr("並び順")}</label><select id="sort-order" value={oldest ? 'oldest' : 'newest'} onChange={e => { setOldest(e.currentTarget.value === 'oldest'); }}><option value="newest">{tr("新しく保存した順")}</option><option value="oldest">{tr("古く保存した順")}</option></select><label class="sr-only" for="display-columns">{tr("表示列数")}</label><select class="columns-select" id="display-columns" value={columns} disabled={settingsBusy || layout === 'list'} onChange={async e => { const value = Number(e.currentTarget.value); if (await setting('columns', value)) setColumns(value); }}>{[1, 2, 3, 4, 5].map(n => <option value={n} key={n}>{tr('{count}列', { count: n })}</option>)}</select><div class="view-switch"><button class="icon-button" aria-label={tr("カード表示")} aria-pressed={layout === 'grid'} disabled={settingsBusy} onClick={async () => { if (await setting('layout', 'grid')) setLayout('grid'); }}><Icon name="grid"/></button><button class="icon-button" aria-label={tr("リスト表示")} aria-pressed={layout === 'list'} disabled={settingsBusy} onClick={async () => { if (await setting('layout', 'list')) setLayout('list'); }}><Icon name="list"/></button></div></div>
+            <div class="display-controls"><label class="sr-only" for="sort-order">{tr("並び順")}</label><select id="sort-order" value={sort} onChange={e => setSort(e.currentTarget.value as typeof sort)}><option value="newest">{tr("新しく保存した順")}</option><option value="oldest">{tr("古く保存した順")}</option><option value="posted-newest">{tr("投稿日が新しい順")}</option><option value="posted-oldest">{tr("投稿日が古い順")}</option></select><label class="sr-only" for="display-columns">{tr("表示列数")}</label><select class="columns-select" id="display-columns" value={columns} disabled={settingsBusy || layout === 'list'} onChange={async e => { const value = Number(e.currentTarget.value); if (await setting('columns', value)) setColumns(value); }}>{[1, 2, 3, 4, 5].map(n => <option value={n} key={n}>{tr('{count}列', { count: n })}</option>)}</select><div class="view-switch"><button class="icon-button" aria-label={tr("カード表示")} aria-pressed={layout === 'grid'} disabled={settingsBusy} onClick={async () => { if (await setting('layout', 'grid')) setLayout('grid'); }}><Icon name="grid"/></button><button class="icon-button" aria-label={tr("リスト表示")} aria-pressed={layout === 'list'} disabled={settingsBusy} onClick={async () => { if (await setting('layout', 'list')) setLayout('list'); }}><Icon name="list"/></button></div></div>
           </div>
           <div class="selection-toolbar"><button disabled={preparing} aria-pressed={selecting} onClick={() => { setSelecting(value => !value); setSelected(new Set()); }}>{selecting ? tr('選択を終了') : tr('投稿を選択')}</button>
             {selecting && <><label class="selection-label"><input type="checkbox" checked={!!visiblePosts.length && selected.size === visiblePosts.length} disabled={!visiblePosts.length || preparing} ref={input => { if (input) input.indeterminate = selected.size > 0 && selected.size < visiblePosts.length; }} onChange={event => setSelected(event.currentTarget.checked ? new Set(visiblePosts.map(post => selectionKey([post.accountId, post.postId]))) : new Set())}/>{tr('表示中をすべて選択')}</label><span class="muted small">{tr('{count}件選択中', { count: selected.size })}</span><button class="danger" disabled={!selected.size || !feed.ready || preparing || run?.state === 'running'} onClick={() => confirmDeletion('selected')}>{tr('選択した投稿を削除')}</button></>}

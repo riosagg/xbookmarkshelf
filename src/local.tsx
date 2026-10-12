@@ -1,4 +1,5 @@
 import { render } from 'preact';
+import { isPostDateOrder } from './post-order';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Icon } from './icons';
 import { orderedMarks } from './model';
@@ -211,7 +212,7 @@ function App() {
             <label>{tr('links')}<select aria-label={tr('links')} value={filters.links} onChange={e => update({ links: e.currentTarget.value as ViewerFilters['links'] })}>{(['', 'with', 'without'] as const).map(s => <option key={s} value={s}>{tr(s || 'any')}</option>)}</select></label>
             <label>{tr('from')}<input type="date" value={from} onChange={e => { setFrom(e.currentTarget.value); }}/></label><label>{tr('to')}<input type="date" value={to} onChange={e => { setTo(e.currentTarget.value); }}/></label>
           </div><button class="text-button" onClick={reset}>{tr('reset')}</button></details>
-          <div class="toolbar"><span class="small muted" role="status">{tr('results')}: {results.length.toLocaleString(locale)} {tr('count')}</span><div class="display-controls"><select aria-label={tr('order')} value={filters.reverse ? 'reverse' : 'original'} onChange={e => update({ reverse: e.currentTarget.value === 'reverse' })}><option value="original">{tr('original')}</option><option value="reverse">{tr('reverse')}</option></select>
+          <div class="toolbar"><span class="small muted" role="status">{tr('results')}: {results.length.toLocaleString(locale)} {tr('count')}</span><div class="display-controls"><select aria-label={tr('order')} value={filters.postedOrder ?? (filters.reverse ? 'reverse' : 'original')} onChange={e => { const value = e.currentTarget.value; update({ postedOrder: isPostDateOrder(value) ? value : undefined, reverse: value === 'reverse' }); }}><option value="original">{tr('original')}</option><option value="reverse">{tr('reverse')}</option><option value="posted-newest">{tr('postedNewest')}</option><option value="posted-oldest">{tr('postedOldest')}</option></select>
             <select class="columns-select" aria-label={tr('columns')} value={settings.columns} disabled={busy} onChange={e => preference({ columns: Number(e.currentTarget.value) })}>{[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}</select>
             <div class="view-switch"><button class="icon-button" aria-label={tr('grid')} aria-pressed={settings.layout === 'grid'} disabled={busy} onClick={() => preference({ layout: 'grid' })}><Icon name="grid"/></button><button class="icon-button" aria-label={tr('list')} aria-pressed={settings.layout === 'list'} disabled={busy} onClick={() => preference({ layout: 'list' })}><Icon name="list"/></button></div>
           </div></div>

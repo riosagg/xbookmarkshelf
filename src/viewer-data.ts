@@ -1,6 +1,7 @@
 import { validateBackup, validateLikesBackup } from './backup-format';
 import { type LinkCard, type QuotedPost, type Tag, orderedMarks } from './model';
 import { textLinks } from './text';
+import { sortByPostedDate, type PostDateOrder } from './post-order';
 
 export const VIEWER_MAX_BYTES = 20 * 1024 * 1024;
 export const VIEWER_MAX_POSTS = 50000;
@@ -76,7 +77,7 @@ export function parseViewerText(text: string): ViewerData {
 
 export interface ViewerFilters {
   query: string; author: string; account: string; tag: string;
-  read: '' | 'read' | 'unread'; media: '' | 'with' | 'without' | 'image' | 'video' | 'unknown'; links: '' | 'with' | 'without'; reverse: boolean;
+  read: '' | 'read' | 'unread'; media: '' | 'with' | 'without' | 'image' | 'video' | 'unknown'; links: '' | 'with' | 'without'; reverse: boolean; postedOrder?: PostDateOrder;
 }
 export const EMPTY_VIEWER_FILTERS: ViewerFilters = { query: '', author: '', account: '', tag: '', read: '', media: '', links: '', reverse: false };
 export function filterViewerPosts(posts: readonly ViewerPost[], filters: ViewerFilters): ViewerPost[] {
@@ -89,5 +90,5 @@ export function filterViewerPosts(posts: readonly ViewerPost[], filters: ViewerF
     (!filters.read || (filters.read === 'read' ? p.read === true : p.read === false)) &&
     (!filters.media || (filters.media === 'unknown' ? p.mediaStatus === 'unknown' : p.mediaStatus !== 'unknown' && (filters.media === 'with' ? (p.media.length + (p.quote?.media.length ?? 0)) > 0 : filters.media === 'without' ? (p.media.length + (p.quote?.media.length ?? 0)) === 0 : [...p.media, ...(p.quote?.media ?? [])].some(m => m.kind === filters.media)))) &&
     (!filters.links || p.hasLinks === (filters.links === 'with')));
-  return filters.reverse ? result.reverse() : result;
+  return filters.postedOrder ? sortByPostedDate(result, filters.postedOrder) : filters.reverse ? result.reverse() : result;
 }

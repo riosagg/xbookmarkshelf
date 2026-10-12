@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import { type Account, type ImportOptions, type ImportRun, type ObservedPost, type Post, type StopReason, type UserState, type Tag, validatePosts, mediaKind, mediaKey, mergeMedia, mergeQuote } from './model';
 import { appendMissingLinks, textLinks } from './text';
 import { type LibrarySource } from './model';
+import { comparePostedTimes, postedTime, type PostDateOrder } from './post-order';
 
 export class LibraryDB extends Dexie {
   posts!: Table<Post, [string, string]>;
@@ -115,7 +116,7 @@ export async function togglePostRead(accountId: string, postId: string, store = 
     const next = { ...state, read: !state.read }; await store.userStates.put(next); return next;
   });
 }
-export interface PostFilters { favorite?: boolean; read?: boolean; tagId?: string; oldestFirst?: boolean; author?: string; media?: 'with' | 'without' | 'image' | 'video'; mark?: 'with' | 'without'; links?: boolean; postedFrom?: string; postedBefore?: string }
+export interface PostFilters { favorite?: boolean; read?: boolean; tagId?: string; oldestFirst?: boolean; postedOrder?: PostDateOrder; author?: string; media?: 'with' | 'without' | 'image' | 'video'; mark?: 'with' | 'without'; links?: boolean; postedFrom?: string; postedBefore?: string }
 const postKey = (accountId: string, postId: string) => `${accountId}:${postId}`;
 export async function pagePosts(accountId: string, query: string, page: number, options: PostFilters = {}, store = db) {
   return windowPosts(accountId, query, Math.max(0, page) * 50, 50, options, store);
@@ -132,9 +133,8 @@ export async function windowPosts(accountId: string, query: string, offset: numb
     const tagged = options.tagId ? new Set((await store.postTags.where('tagId').equals(options.tagId).toArray()).map(t => postKey(t.accountId, t.postId))) : null;
     const markedTags = options.mark ? new Set((await (accountId ? store.tags.where('accountId').equals(accountId) : store.tags.toCollection()).toArray()).filter(t => t.mark).map(t => t.id)) : null;
     const marked = markedTags ? new Set((await store.postTags.filter(t => markedTags.has(t.tagId)).toArray()).map(t => postKey(t.accountId, t.postId))) : null;
-    const collection = () => {
-      const base = accountId ? store.posts.where('[accountId+firstImportedAt]').between([accountId, Dexie.minKey], [accountId, Dexie.maxKey]) : store.posts.orderBy('firstImportedAt');
-      return (options.oldestFirst ? base : base.reverse()).filter(p => {
+    const base = () => accountId ? store.posts.where('[accountId+firstImportedAt]').between([accountId, Dexie.minKey], [accountId, Dexie.maxKey]) : store.posts.orderBy('firstImportedAt');
+    const matches = (p: Post) => {
         const key = postKey(p.accountId, p.postId);
         const posted = p.postedAt ? Date.parse(p.postedAt) : NaN;
         const media = [...p.media, ...(p.quote?.media ?? [])];
@@ -145,7 +145,18 @@ export async function windowPosts(accountId: string, query: string, offset: numb
           (options.links === undefined || (textLinks(p.text + '\n' + (p.quote?.text ?? '')).length > 0) === options.links) &&
           (!options.postedFrom || posted >= Date.parse(options.postedFrom)) && (!options.postedBefore || posted < Date.parse(options.postedBefore)) &&
           (!needle || `${p.text} ${p.quote?.text ?? ''} ${p.quote?.authorName ?? ''} ${p.quote?.authorHandle ?? ''} ${p.authorName} ${p.authorHandle}`.normalize('NFKC').toLocaleLowerCase().includes(needle));
-      });
+    };
+    if (options.postedOrder) {
+      // Keep only keys and timestamps while scanning. Fetch full posts for the window only.
+      const index: { key: [string, string]; time: number | null }[] = [];
+      await base().reverse().filter(matches).each(p => { index.push({ key: [p.accountId, p.postId], time: postedTime(p.postedAt) }); });
+      index.sort((a, b) => comparePostedTimes(a.time, b.time, options.postedOrder!));
+      const rows = await store.posts.bulkGet(index.slice(offset, offset + limit).map(item => item.key));
+      return { total: index.length, rows: rows.filter((post): post is Post => post !== undefined) };
+    }
+    const collection = () => {
+      const rows = base();
+      return (options.oldestFirst ? rows : rows.reverse()).filter(matches);
     };
     return { total: await collection().count(), rows: await collection().offset(offset).limit(limit).toArray() };
   });

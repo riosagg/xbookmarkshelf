@@ -12,6 +12,7 @@ export const viewerMessages = {
   media: ['メディア', 'Media'], links: ['本文URL', 'Text links'], read: ['既読', 'Read state'], any: ['すべて', 'All'],
   with: ['あり', 'With'], without: ['なし', 'Without'], image: ['画像', 'Images'], video: ['動画', 'Videos'], marked: ['マークあり', 'Marked'],
   readYes: ['既読', 'Read'], readNo: ['未読', 'Unread'], order: ['並び順', 'Order'], original: ['ファイルの順序', 'File order'], reverse: ['逆順', 'Reverse order'],
+  postedNewest: ['投稿日が新しい順', 'Newest post first'], postedOldest: ['投稿日が古い順', 'Oldest post first'],
   grid: ['カード表示', 'Card view'], list: ['リスト表示', 'List view'], columns: ['列数', 'Columns'], previews: ['画像プレビュー', 'Image previews'],
   previewNote: ['画像ONでpbs.twimg.comへ通信します。通常の画像キャッシュはブラウザが管理します。', 'Images load from pbs.twimg.com when enabled. The browser manages its normal image cache.'],
   theme: ['テーマ', 'Theme'], system: ['システムに従う', 'Follow system'], light: ['ライト', 'Light'], dark: ['ダーク', 'Dark'], language: ['言語', 'Language'],
