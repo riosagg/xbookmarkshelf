@@ -1,4 +1,4 @@
-import { chromium, expect, test } from '@playwright/test';
+import { chromium, expect, test } from './fixtures';
 import { mkdtemp, cp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -83,14 +83,14 @@ for (const { path, collection } of [{ path: '/i/bookmarks', collection: 'bookmar
     await expect(library.locator('.link-card')).toHaveCount(1);
     await expect(library.locator('.link-card')).toHaveAttribute('href', 'https://example.invalid/story');
     await expect(library.locator('.link-card')).toContainText('Synthetic site title');
-    await expect(library.locator('.link-card img')).toHaveCount(0);
+    await expect(library.locator('.link-card img')).toHaveCount(1);
     const photoCard = library.locator('.post-card').filter({ has: library.locator('summary').filter({ hasText: /^合成投稿 3$/ }) });
     await expect(photoCard.locator('.media-count')).toHaveText('1 / 4');
     await expect(library.locator('.video-action')).toHaveCount(2);
-    await expect(library.locator('.card-media img')).toHaveCount(0);
+    await expect(library.locator('.card-media img')).toHaveCount(3);
     await expect(library.getByRole('navigation', { name: 'ライブラリ', exact: true }).getByRole('button', { name: /^タグ/ })).toHaveCount(0);
     await library.getByRole('navigation', { name: '管理', exact: true }).getByRole('button', { name: '設定', exact: true }).click();
-    await library.getByLabel('画像プレビューを表示').check();
+    await expect(library.getByLabel('画像プレビューを表示')).toBeChecked();
     await library.getByRole('navigation', { name: 'ライブラリ', exact: true }).getByRole('button', { name: collection === 'likes' ? /^すべてのいいね/ : /^すべてのブックマーク/ }).click();
     const videoCard = library.locator('.post-card').filter({ has: library.locator('summary').filter({ hasText: /^合成投稿 2$/ }) });
     await expect(videoCard.locator('.card-media img')).toHaveAttribute('src', 'https://pbs.twimg.com/amplify_video_thumb/123/img/late?format=webp&name=medium');

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';

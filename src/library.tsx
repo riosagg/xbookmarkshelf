@@ -19,7 +19,7 @@ import { verifyBackupParts, type BackupFile } from './backup-parts';
 import { SettingsTransfer } from './settings-transfer';
 import { DataManagement, DeletePostsDialog } from './data-management';
 import { prepareDeletion, selectionKey, type DeletionPlan } from './post-data';
-import type { DisplaySettings } from './settings-backup';
+import { DEFAULT_DISPLAY_SETTINGS, type DisplaySettings } from './settings-backup';
 import { initialTheme, applyTheme, type Theme } from './theme';
 import './style.css';
 import { LibraryStore, useLibraryDB } from './library-store';
@@ -230,7 +230,7 @@ function Library({ source, onSource }: { source: LibrarySource; onSource(source:
     void settingsDB.settings.bulkGet(['columns', 'theme', 'previews', 'layout']).then(([c, t, p, l]) => {
       if (typeof c?.value === 'number' && Number.isInteger(c.value) && c.value >= 1 && c.value <= 5) setColumns(c.value);
       if (t?.value === 'dark' || t?.value === 'light') setTheme(t.value);
-      if (p?.value === true) setPreviews(true);
+      setPreviews(p ? p.value === true : DEFAULT_DISPLAY_SETTINGS.previews);
       if (l?.value === 'grid' || l?.value === 'list') setLayout(l.value);
     }).catch(() => setError('表示設定を読み込めません'));
   }, []);

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 async function openPopup(page: Page, source: 'bookmarks' | 'likes', language = 'ja', initialRun: unknown = null, inspectionFailures = 0) {
   await page.addInitScript(({ source, language, initialRun, inspectionFailures }) => {

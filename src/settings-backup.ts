@@ -16,7 +16,7 @@ export interface SettingsBackup {
   settings: DisplaySettings;
 }
 export const MAX_SETTINGS_FILE_BYTES = 64 * 1024;
-export const DEFAULT_DISPLAY_SETTINGS: Readonly<DisplaySettings> = { theme: 'light', columns: 3, layout: 'grid', previews: false, language: 'system' };
+export const DEFAULT_DISPLAY_SETTINGS: Readonly<DisplaySettings> = { theme: 'light', columns: 3, layout: 'grid', previews: true, language: 'system' };
 const LEGACY_SETTINGS_KEYS = ['theme', 'columns', 'layout', 'previews'] as const;
 const SETTINGS_KEYS = [...LEGACY_SETTINGS_KEYS, 'language'] as const;
 
@@ -58,7 +58,7 @@ export async function createSettingsBackup(store: LibraryDB = db): Promise<Setti
       theme: theme?.value === 'dark' ? 'dark' : 'light',
       columns: typeof columns?.value === 'number' && Number.isInteger(columns.value) && columns.value >= 1 && columns.value <= 5 ? columns.value : DEFAULT_DISPLAY_SETTINGS.columns,
       layout: layout?.value === 'list' ? 'list' : 'grid',
-      previews: previews?.value === true,
+      previews: previews ? previews.value === true : DEFAULT_DISPLAY_SETTINGS.previews,
       language: isLanguagePreference(language?.value) ? language.value : 'system',
     };
     return { format: 'xbookmarkshelf-settings', formatVersion: 1, exportedAt: new Date().toISOString(), settings };

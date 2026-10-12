@@ -19,6 +19,8 @@ it('exports only the five display preferences, using defaults without exposing o
   expect(Object.keys(backup).sort()).toEqual(['exportedAt', 'format', 'formatVersion', 'settings']);
   expect(JSON.stringify(backup)).not.toContain(account.handle);
   expect(JSON.stringify(backup)).not.toContain('synthetic-only');
+  await store.settings.put({ key: 'previews', value: false });
+  expect((await createSettingsBackup(store)).settings.previews).toBe(false);
   await store.settings.bulkPut([{ key: 'theme', value: 'dark' }, { key: 'columns', value: 5 }, { key: 'layout', value: 'list' }, { key: 'previews', value: true }, { key: 'language', value: 'en' }]);
   expect((await createSettingsBackup(store)).settings).toEqual(settingsFile().settings);
 });
@@ -76,7 +78,7 @@ it('rolls back every changed preference when one database write fails', async ()
 it('exports safe defaults instead of serializing malformed stored preferences', async () => {
   await store.settings.bulkPut([{ key: 'theme', value: { private: 'synthetic-private' } }, { key: 'columns', value: 99 }, { key: 'layout', value: '<script>' }, { key: 'previews', value: 'true' }, { key: 'language', value: '<script>' }]);
   const backup = await createSettingsBackup(store);
-  expect(backup.settings).toEqual(DEFAULT_DISPLAY_SETTINGS);
+  expect(backup.settings).toEqual({ ...DEFAULT_DISPLAY_SETTINGS, previews: false });
   expect(JSON.stringify(backup)).not.toContain('synthetic-private');
 });
 it('reads old four-key files without replacing the current language and exports it in new files', async () => {

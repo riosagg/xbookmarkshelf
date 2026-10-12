@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 for (const source of ['bookmarks', 'likes'] as const) test(`${source}: continuous scrolling stays bounded, reaches both ends and resets filters and layout`, async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
@@ -20,7 +20,7 @@ for (const source of ['bookmarks', 'likes'] as const) test(`${source}: continuou
     const observer = new MutationObserver(() => { state.max = Math.max(state.max, document.querySelectorAll('.card-grid .post-card').length); });
     observer.observe(document.body, { subtree: true, childList: true });
   });
-  await page.mouse.wheel(0, 9000);
+  await page.mouse.wheel(0, 18000);
   await expect.poll(async () => Number(await feed.getAttribute('data-start'))).toBeGreaterThan(50);
   await expect(feed).toHaveAttribute('aria-busy', 'false'); expect(await cards.count()).toBeLessThanOrEqual(50);
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));

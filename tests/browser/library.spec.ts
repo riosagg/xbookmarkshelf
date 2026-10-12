@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 async function seedGallery(page: import('@playwright/test').Page) {
   await page.goto('/library.html');
   await page.evaluate(async () => {
     const path = '/src/db.ts'; const { db } = await import(path);
+    await db.settings.put({ key: 'previews', value: false });
     await db.settings.put({ key: 'accounts', value: [{ id: 'a', handle: 'design_notes' }, { id: 'b', handle: 'tech_notes' }] });
     const examples: [string, string, string, string, string, string][] = [
       ['1', 'a', 'Design Notes', '余白を整えるだけで、情報は読みやすくなる。\nカードの中には一つの話題を。詳しい内容は開いて読めるように。', 'design', '読書'],
@@ -737,4 +738,42 @@ test('library contains long content on narrow and multi-column screens', async (
   await expect.poll(() => page.locator('.card-grid').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(2);
   await page.getByLabel('表示列数').selectOption('1');
   await expect.poll(() => page.locator('.card-grid').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(1);
+});
+
+
+test('image and video covers default to on, while saved off prevents requests across reload and source switches', async ({ page }) => {
+  await seedGallery(page);
+  const requests: string[] = [];
+  await page.route('https://pbs.twimg.com/**', route => {
+    requests.push(route.request().url());
+    return route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="blue"/></svg>' });
+  });
+  await page.evaluate(async () => {
+    const path = '/src/db.ts'; const { db } = await import(path);
+    await db.settings.delete('previews');
+    await db.posts.update(['a', '2'], { media: [{ kind: 'video', url: 'https://pbs.twimg.com/ext_tw_video_thumb/synthetic/pu/img/cover.jpg' }] });
+  });
+  await page.reload();
+  for (const name of ['Design Notes', 'Frontend Lab']) {
+    const card = page.locator('.card-grid .post-card').filter({ hasText: name });
+    await expect.poll(() => card.locator('img').evaluateAll(images => images.some(img => (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
+  }
+  await expect(page.locator('.card-grid .post-card').filter({ hasText: 'Frontend Lab' }).getByRole('link', { name: 'Xで動画を見る' })).toBeVisible();
+  const settings = () => page.getByRole('navigation', { name: '管理', exact: true }).getByRole('button', { name: '設定', exact: true }).click();
+  await settings(); await expect(page.getByLabel('画像プレビューを表示')).toBeChecked();
+  await page.getByLabel('画像プレビューを表示').uncheck();
+  await expect(page.locator('.switch-label')).toHaveText('オフ');
+  await expect.poll(() => page.evaluate(async () => {
+    const path = '/src/db.ts'; const { db } = await import(path);
+    return (await db.settings.get('previews'))?.value;
+  })).toBe(false);
+  requests.length = 0;
+  await page.reload();
+  await expect(page.locator('.card-grid .post-card')).toHaveCount(6);
+  await expect(page.locator('.card-grid img')).toHaveCount(0);
+  await settings(); await expect(page.getByLabel('画像プレビューを表示')).not.toBeChecked();
+  await page.getByRole('group', { name: 'ライブラリ切替', exact: true }).getByRole('button', { name: 'いいね', exact: true }).click();
+  await settings(); await expect(page.getByLabel('画像プレビューを表示')).not.toBeChecked();
+  await page.waitForTimeout(200);
+  expect(requests).toEqual([]);
 });
