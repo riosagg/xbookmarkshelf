@@ -26,7 +26,7 @@ for (const edition of ['extension', 'local'] as const) for (const source of ['bo
       await page.locator('.filter-panel summary').click();
     }
     const cards = page.locator('.card-grid .post-card'); const author = page.getByLabel('投稿者', { exact: true });
-    await expect(cards).toHaveCount(6); await expect(page.locator('#author-filter-hint')).toContainText('@IDで完全一致');
+    await expect(cards).toHaveCount(6);
     await author.fill('x'); await expect(cards).toHaveCount(5);
     for (const input of ['@x', '@X', '  @x  ', '　＠Ｘ　']) {
       await author.fill(input); await expect(cards).toHaveCount(2);
@@ -50,9 +50,7 @@ for (const edition of ['extension', 'local'] as const) for (const source of ['bo
     await page.getByRole('button', { name: source === 'bookmarks' ? /^All bookmarks/ : /^All likes/ }).click();
     if (edition === 'local') await page.locator('.filter-panel summary').click();
     await page.getByLabel('Author', { exact: true }).fill('@x'); await expect(cards).toHaveCount(2);
-    await expect(page.locator('#author-filter-hint')).toHaveText('Use @handle for an exact match; otherwise search names and handles.');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    expect(await page.locator('#author-filter-hint').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     await page.screenshot({ path: `test-results/${edition}-${source}-author-filter.png` });
   });
 }

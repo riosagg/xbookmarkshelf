@@ -9,7 +9,6 @@ export const viewerMessages = {
   all: ['すべての投稿', 'All posts'], unread: ['あとで読む', 'Read later'], unmarked: ['マークなし', 'Unmarked'], marks: ['マーク', 'Marks'],
   search: ['本文・投稿者・URLを検索', 'Search text, author or URL'], filters: ['絞り込み', 'Filters'], reset: ['条件をリセット', 'Reset filters'],
   author: ['投稿者', 'Author'], account: ['アカウント', 'Account'], tag: ['マーク・タグ', 'Mark or tag'],
-  authorHint: ['@IDで完全一致。@なしは名前・IDの部分一致。', 'Use @handle for an exact match; otherwise search names and handles.'],
   media: ['メディア', 'Media'], links: ['本文URL', 'Text links'], read: ['既読', 'Read state'], any: ['すべて', 'All'],
   with: ['あり', 'With'], without: ['なし', 'Without'], image: ['画像', 'Images'], video: ['動画', 'Videos'], marked: ['マークあり', 'Marked'],
   readYes: ['既読', 'Read'], readNo: ['未読', 'Unread'], order: ['並び順', 'Order'], original: ['ファイルの順序', 'File order'], reverse: ['逆順', 'Reverse order'],
