@@ -1,5 +1,7 @@
 # Privacy
 
+English | [日本語](PRIVACY.ja.md)
+
 Last updated: October 13, 2026
 
 This policy covers the Chrome extension and local library app, version 0.1.0.

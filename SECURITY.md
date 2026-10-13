@@ -1,5 +1,7 @@
 # Security
 
+English | [日本語](SECURITY.ja.md)
+
 ## Supported version
 
 This policy covers version 0.1.0 of the Chrome extension and local library app.

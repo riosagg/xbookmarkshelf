@@ -1,5 +1,7 @@
 # xbookmarkshelf
 
+English | [日本語](README.ja.md)
+
 A viewer for organizing and reading your X bookmarks and likes. Create marks with your own names and icons to group posts by topic, then search and filter your library. Available as a Chrome extension and a standalone local library app that opens JSON files on your computer.
 
 Version 0.1.0 is designed for Chrome on Windows.

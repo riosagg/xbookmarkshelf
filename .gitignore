@@ -18,10 +18,14 @@ CLAUDE.md
 # Root Markdown is local unless it is an intentional public document
 /*.md
 !/README.md
+!/README.ja.md
 !/CHANGELOG.md
+!/CHANGELOG.ja.md
 !/CONTRIBUTING.md
 !/SECURITY.md
+!/SECURITY.ja.md
 !/PRIVACY.md
+!/PRIVACY.ja.md
 !/LICENSE.md
 
 # Dependencies, builds, test output, and editor/OS files

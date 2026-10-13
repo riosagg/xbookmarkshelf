@@ -1,5 +1,7 @@
 # Changelog
 
+English | [日本語](CHANGELOG.ja.md)
+
 ## v0.1.0
 
 - Chrome extension and a standalone local library app that stores posts in JSON files.
