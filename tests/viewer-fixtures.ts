@@ -20,3 +20,19 @@ export function viewerBackup(): Backup {
     userStates: [{ accountId: 'a', postId: '1', read: true, favorite: true }],
   };
 }
+
+export function authorBackup(): Backup {
+  const value = viewerBackup();
+  const examples = [
+    ['a', '1', 'x', 'Exact Author', '保存した投稿'],
+    ['a', '2', 'x_extra', 'Extra Author', '本文に @x を含む投稿'],
+    ['b', '1', 'prefix_x', 'Prefix Author', '別の投稿'],
+    ['a', '3', 'plain', 'Display x', '表示名の部分一致'],
+    ['a', '4', 'plain_two', 'Other Author', '本文に @x を含み、引用者もx'],
+    ['b', '2', 'X', 'Another Exact Author', '別の保存アカウント'],
+  ] as const;
+  value.posts = examples.map(([accountId, postId, authorHandle, authorName, text], i) => ({ ...observation(postId, text), accountId, authorHandle, authorName,
+    url: `https://x.com/${authorHandle}/status/${postId}`, firstImportedAt: new Date(Date.UTC(2026, 8, 1, 0, i)).toISOString(), lastImportedAt: timestamp }));
+  value.posts[4]!.quote = { postId: '40', authorHandle: 'x', authorName: 'Quoted x', text: '引用本文', postedAt: null, url: 'https://x.com/x/status/40', media: [] };
+  return value;
+}

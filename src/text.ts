@@ -1,3 +1,12 @@
+export function authorMatcher(value: string) {
+  const query = value.normalize('NFKC').trim().toLowerCase();
+  const exact = query.startsWith('@');
+  const needle = exact ? query.slice(1) : query;
+  return (post: { authorHandle: string; authorName: string }) => !query || (exact
+    ? !!needle && post.authorHandle.normalize('NFKC').toLowerCase() === needle
+    : `${post.authorName}\n${post.authorHandle}`.normalize('NFKC').toLowerCase().includes(needle));
+}
+
 export function webUrl(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > 2048 || /[\u0000-\u0020\u007f]/.test(value)) return null;
   try {

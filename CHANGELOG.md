@@ -7,6 +7,7 @@ English | [日本語](CHANGELOG.ja.md)
 - Chrome extension and a standalone local library app that stores posts in JSON files.
 - Separate Bookmarks and Likes libraries, with matching backup filenames.
 - Named marks, read status, text search, filters, and sorting by posting date.
+- Exact author filtering with `@handle`, while input without `@` searches names and handles by partial match.
 - Image previews and photo enlargement in both versions, video cover images, link cards, and quoted posts. Extension previews are on by default.
 - JSON backup and restore, exports by mark, and automatic splitting of large backups.
 - Japanese and English interfaces with saved display settings.

@@ -81,6 +81,7 @@ export const english = {
   '投稿のフィルタ': 'Post filters', 'フィルタ': 'Filters', '条件をリセット': 'Reset filters',
   'アカウント': 'Account', 'すべてのアカウント': 'All accounts', '投稿者': 'Author',
   '@ハンドル または名前': '@handle or name', 'マーク・タグ': 'Marks and tags', 'すべて': 'All',
+  '@IDで完全一致。@なしは名前・IDの部分一致。': 'Use @handle for an exact match; otherwise search names and handles.',
   'マークあり': 'Marked', 'タグ': 'Tags', 'メディア': 'Media', 'メディアあり': 'With media',
   'メディアなし': 'Without media', '画像あり': 'With images', '動画あり': 'With videos',
   '既読状態': 'Read status', '未読のみ': 'Unread only', '既読のみ': 'Read only',

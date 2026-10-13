@@ -34,7 +34,7 @@ Importing continues after you close the popup, and repeated imports avoid duplic
 
 Click "Open library", then use the switch below the logo to choose Bookmarks or Likes. Posts, marks, and read status are managed separately; display settings are shared.
 
-- Search post text and filter by author, account, mark, read state, media, links in the text, or posting date.
+- Search post text and filter by author, account, mark, read state, media, links in the text, or posting date. In the Author filter, `@handle` matches that handle exactly; text without `@` matches part of a name or handle.
 - Create up to 30 marks per account, each with a name and icon. A post can have multiple marks, with up to 20 marks and tags combined.
 - Click a mark icon to assign or remove it. Find additional marks under "…" and change their order on the marks page.
 - Opening a post marks it as read and removes it from "Read later". "Unmarked" shows posts without a mark.

@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import { type Account, type ImportOptions, type ImportRun, type ObservedPost, type Post, type StopReason, type UserState, type Tag, validatePosts, mediaKind, mediaKey, mergeMedia, mergeQuote } from './model';
-import { appendMissingLinks, textLinks } from './text';
+import { appendMissingLinks, authorMatcher, textLinks } from './text';
 import { type LibrarySource } from './model';
 import { comparePostedTimes, postedTime, type PostDateOrder } from './post-order';
 
@@ -125,7 +125,7 @@ export async function windowPosts(accountId: string, query: string, offset: numb
   if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error('Invalid post window');
   return store.transaction('r', [store.posts, store.userStates, store.postTags, store.tags], async () => {
     const needle = query.normalize('NFKC').toLocaleLowerCase();
-    const author = (options.author ?? '').replace(/^@/, '').normalize('NFKC').toLocaleLowerCase();
+    const matchesAuthor = authorMatcher(options.author ?? '');
     const states = options.favorite || options.read !== undefined
       ? await (accountId ? store.userStates.where('accountId').equals(accountId) : store.userStates.toCollection()).toArray() : [];
     const read = new Set(states.filter(s => s.read).map(s => postKey(s.accountId, s.postId)));
@@ -141,7 +141,7 @@ export async function windowPosts(accountId: string, query: string, offset: numb
         const mediaMatches = !options.media || (options.media === 'with' ? media.length > 0 : options.media === 'without' ? !media.length : media.some(m => mediaKind(m.kind, m.url) === options.media));
         return (!options.favorite || favorite.has(key)) && (options.read === undefined || read.has(key) === options.read) &&
           (!tagged || tagged.has(key)) && (!marked || marked.has(key) === (options.mark === 'with')) && mediaMatches &&
-          (!author || `${p.authorName} ${p.authorHandle}`.normalize('NFKC').toLocaleLowerCase().includes(author)) &&
+          matchesAuthor(p) &&
           (options.links === undefined || (textLinks(p.text + '\n' + (p.quote?.text ?? '')).length > 0) === options.links) &&
           (!options.postedFrom || posted >= Date.parse(options.postedFrom)) && (!options.postedBefore || posted < Date.parse(options.postedBefore)) &&
           (!needle || `${p.text} ${p.quote?.text ?? ''} ${p.quote?.authorName ?? ''} ${p.quote?.authorHandle ?? ''} ${p.authorName} ${p.authorHandle}`.normalize('NFKC').toLocaleLowerCase().includes(needle));

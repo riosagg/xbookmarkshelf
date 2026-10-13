@@ -1,6 +1,6 @@
 import { validateBackup, validateLikesBackup } from './backup-format';
 import { type LinkCard, type QuotedPost, type Tag, orderedMarks } from './model';
-import { textLinks } from './text';
+import { authorMatcher, textLinks } from './text';
 import { sortByPostedDate, type PostDateOrder } from './post-order';
 
 export const VIEWER_MAX_BYTES = 20 * 1024 * 1024;
@@ -82,9 +82,9 @@ export interface ViewerFilters {
 export const EMPTY_VIEWER_FILTERS: ViewerFilters = { query: '', author: '', account: '', tag: '', read: '', media: '', links: '', reverse: false };
 export function filterViewerPosts(posts: readonly ViewerPost[], filters: ViewerFilters): ViewerPost[] {
   const words = normalizeSearch(filters.query.trim()).split(/\s+/u).filter(Boolean);
-  const author = normalizeSearch(filters.author.replace(/^@/, '').trim());
+  const matchesAuthor = authorMatcher(filters.author);
   const result = posts.filter(p => words.every(word => p.search.includes(word)) &&
-    (!author || normalizeSearch(`${p.authorHandle}\n${p.authorName}`).includes(author)) &&
+    matchesAuthor(p) &&
     (!filters.account || p.accountId === filters.account) &&
     (!filters.tag || (filters.tag === ':without' ? !p.tags.some(t => t.mark) : filters.tag === ':with' ? p.tags.some(t => t.mark) : p.tags.some(t => t.id === filters.tag))) &&
     (!filters.read || (filters.read === 'read' ? p.read === true : p.read === false)) &&
