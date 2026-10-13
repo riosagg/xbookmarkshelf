@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="280" viewBox="0 0 440 280">
+  <rect width="440" height="280" fill="#101318"/>
+  <rect x="32" y="32" width="376" height="216" rx="22" fill="#191d24" stroke="#2d333e"/>
+  <rect x="54" y="59" width="58" height="62" rx="13" fill="#e7ebf0"/>
+  <svg x="66" y="71" width="34" height="38" viewBox="0 0 24 24" fill="none" stroke="#19202a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 3h12v18l-6-4-6 4V3Z"/>
+  </svg>
+  <text x="132" y="88" fill="#e7ebf0" font-family="Arial, sans-serif" font-size="25" font-weight="700" letter-spacing="-.7">xbookmarkshelf</text>
+  <text x="133" y="109" fill="#a0aab8" font-family="Arial, sans-serif" font-size="10" letter-spacing="2.1">FOR X · LOCAL FIRST</text>
+  <rect x="54" y="151" width="99" height="69" rx="9" fill="#101318" stroke="#2d333e"/>
+  <rect x="170" y="151" width="99" height="69" rx="9" fill="#101318" stroke="#2d333e"/>
+  <rect x="286" y="151" width="99" height="69" rx="9" fill="#101318" stroke="#2d333e"/>
+  <svg x="90" y="170" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#79b7f5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4V3Z"/></svg>
+  <svg x="207" y="170" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#79b7f5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3-5.6-3-5.6 3 1.1-6.3L3 9.6l6.2-.9L12 3Z"/></svg>
+  <svg x="323" y="170" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#79b7f5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0"/></svg>
+</svg>

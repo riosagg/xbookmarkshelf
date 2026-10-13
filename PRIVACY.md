@@ -12,6 +12,12 @@ The app stores the post text, authors, accounts, dates, and URLs available durin
 
 Only image and video URLs are stored. The app has no media download feature. It does not collect or store your X password, cookies, or authentication tokens.
 
+## How data is used
+
+Data is used only to import, organize, search, filter, and read your bookmarks and likes. xbookmarkshelf follows the Chrome Web Store's Limited Use requirements. Data is not sold, used for advertising or credit decisions, or made available to the developer for reading.
+
+Saved data remains in your browser profile or files until you remove it. Deleting posts retains mark definitions and settings, as described below.
+
 ## Storage locations
 
 - Chrome extension: posts and settings are stored locally in the Chrome profile you use.

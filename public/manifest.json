@@ -2,13 +2,24 @@
   "manifest_version": 3,
   "name": "xbookmarkshelf",
   "version": "0.1.0",
-  "description": "Xのブックマークやいいねを整理して読むためのビューアーです。自分で作ったマークでジャンル分けし、検索やフィルタで読みたい投稿を探せます。データはブラウザ内に保存します。",
+  "description": "__MSG_extensionDescription__",
+  "default_locale": "en",
   "minimum_chrome_version": "120",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "permissions": [
     "activeTab",
     "scripting"
   ],
   "action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    },
     "default_popup": "popup.html",
     "default_title": "xbookmarkshelf"
   },
