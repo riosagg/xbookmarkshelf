@@ -10,6 +10,7 @@ import { textLinks, parseTagNames, formatTagNames, webUrl } from './text';
 import { createBackup, createMarkedBackup, restoreBackups, validateCollectionBackup, type CollectionBackup } from './backup';
 import { PostBackupExport, downloadPostBackup } from './backup-export';
 import { Icon, type IconName } from './icons';
+import { BrandMark } from './brand';
 import { togglePostMark } from './marks';
 import { MarkManager } from './mark-manager';
 import { PostMarks } from './post-marks';
@@ -323,7 +324,7 @@ function Library({ source, onSource }: { source: LibrarySource; onSource(source:
   function tagLabel(tag: Tag) { return !accountId && meta.tags.some(t => t.id !== tag.id && t.name === tag.name) ? `${tag.name} · @${accounts.find(a => a.id === tag.accountId)?.handle ?? tr("別アカウント")}` : tag.name; }
   return <><div class="library-layout">
     <aside class="sidebar">
-      <button class="brand" onClick={() => navigate('all')}><span class="brand-mark"><Icon name="bookmark"/></span><span>xbookmarkshelf<small>FOR X · LOCAL FIRST</small></span></button>
+      <button class="brand" onClick={() => navigate('all')}><span class="brand-mark"><BrandMark/></span><span>xbookmarkshelf<small>FOR X · LOCAL FIRST</small></span></button>
       <div class="library-source-switch" role="group" aria-label={tr('ライブラリ切替')}>{(['bookmarks', 'likes'] as const).map(value => <button key={value} aria-pressed={source === value} disabled={restoring || preparing || settingsBusy || !!pending} onClick={() => onSource(value)}><Icon name={value === 'likes' ? 'heart' : 'bookmark'}/>{tr(value === 'likes' ? 'いいね' : 'ブックマーク')}</button>)}</div>
       <nav class="side-nav" aria-label={tr("ライブラリ")}><span class="nav-caption">{tr("ライブラリ")}</span>{NAV.map(item => <button key={item.view} class={`nav-item ${view === item.view && !tagId ? 'active' : ''}`} aria-current={view === item.view && !tagId ? 'page' : undefined} onClick={() => navigate(item.view)}><Icon name={item.view === 'all' && likes ? 'heart' : item.icon}/><span>{tr(item.view === 'all' && likes ? 'すべてのいいね' : item.label)}</span><span class="nav-count">{counts[item.view]}</span></button>)}</nav>
       <div class="side-tags side-marks"><button class={`mark-section-heading ${view === 'marks' ? 'active' : ''}`} aria-label={tr("マークを管理")} aria-current={view === 'marks' ? 'page' : undefined} onClick={() => navigate('marks')}><span>{tr("マーク")}</span><span class="mark-section-add"><Icon name="plus"/></span></button>{markTags.length ? markTags.map(t => <button class={`nav-item ${tagId === t.id ? 'active' : ''}`} key={t.id} onClick={() => filterTag(t.id)} title={tagLabel(t)}><Icon name={t.mark!}/><span class="nav-text">{tagLabel(t)}</span><span class="nav-count">{t.count}</span></button>) : <p class="sidebar-hint sidebar-more">{tr("まだ登録されていません")}</p>}</div>

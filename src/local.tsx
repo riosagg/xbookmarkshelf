@@ -2,6 +2,7 @@ import { render } from 'preact';
 import { isPostDateOrder } from './post-order';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Icon } from './icons';
+import { BrandMark } from './brand';
 import { orderedMarks } from './model';
 import { PostCard, Detail } from './file-post-ui';
 import { filterViewerPosts, EMPTY_VIEWER_FILTERS, VIEWER_MAX_BYTES, type ViewerFilters, type ViewerPost } from './viewer-data';
@@ -167,7 +168,7 @@ function App() {
   const annotation = (p: ViewerPost) => <div class="local-post-note small muted">{p.mediaStatus === 'unknown' && <span>{tr('unknownMedia')}</span>}{p.dateSource === 'id' && <span title={p.postedAt ?? ''}>{tr('idDate')}</span>}</div>;
   const heading = filters.read === 'unread' ? tr('unread') : filters.tag === ':without' ? tr('unmarked') : filters.tag && !filters.tag.startsWith(':') ? tagLabel(filters.tag) : tr(source === 'bookmarks' ? 'allBookmarks' : 'allLikes');
   return <div class="library-layout viewer-layout local-layout">
-    <aside class="sidebar"><div class="brand"><span class="brand-mark"><Icon name="bookmark"/></span><span>xbookmarkshelf<small>LOCAL LIBRARY</small></span></div>
+    <aside class="sidebar"><div class="brand"><span class="brand-mark"><BrandMark/></span><span>xbookmarkshelf<small>LOCAL LIBRARY</small></span></div>
       <div class="local-source-switch" role="group" aria-label={tr('localTitle')}>{(['bookmarks', 'likes'] as const).map(s => <button key={s} aria-pressed={source === s} disabled={busy} onClick={() => switchSource(s)}><Icon name={s === 'likes' ? 'heart' : 'bookmark'}/>{tr(s)}</button>)}</div>
       <nav class="side-nav" aria-label={tr('localTitle')}><button class={`nav-item ${section === 'posts' && !filters.tag && !filters.read ? 'active' : ''}`} onClick={() => { setSection('posts'); update({ tag: '', read: '' }); }}><Icon name="bookmark"/><span class="nav-text">{tr(source === 'bookmarks' ? 'allBookmarks' : 'allLikes')}</span><span class="nav-count">{data?.posts.length.toLocaleString(locale) ?? 0}</span></button>
         <button class={`nav-item ${section === 'posts' && filters.read === 'unread' ? 'active' : ''}`} onClick={() => { setSection('posts'); update({ tag: '', read: 'unread' }); }}><Icon name="unread"/><span class="nav-text">{tr('unread')}</span><span class="nav-count">{metadata.unread}</span></button>

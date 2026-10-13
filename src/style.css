@@ -75,6 +75,7 @@ p { line-height: 1.7; }
 .brand small { display: block; font-size: 8px; color: var(--muted); font-weight: 500; letter-spacing: 1.7px; margin-top: 4px; }
 .brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 31px; height: 34px; border-radius: 7px; background: var(--primary); color: var(--on-primary); flex: none; }
 .brand-mark .icon { width: 21px; height: 21px; }
+.brand-mark .brand-symbol { width: 25px; height: 25px; }
 .side-nav { display: flex; flex-direction: column; gap: 4px; padding: 11px 0 16px; }
 .nav-caption { display: flex; align-items: center; justify-content: space-between; padding: 0 10px; margin: 8px 0 9px; font-size: 10px; letter-spacing: .8px; font-weight: 500; color: var(--muted); }
 .nav-item { width: 100%; justify-content: flex-start; gap: 10px; border: 0; background: transparent; border-radius: 6px; padding: 10px 10px; font-size: 12px; text-align: left; min-width: 0; }
@@ -277,6 +278,7 @@ button.media-frame { cursor: zoom-in; }
 .popup { padding: 19px 21px 0; width: 380px; max-height: 600px; overflow-y: auto; }
 .popup-brand { display: flex; align-items: center; gap: 9px; padding-bottom: 17px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
 .popup-brand .brand-mark { width: 28px; height: 30px; }
+.popup-brand .brand-symbol { width: 23px; height: 23px; }
 .popup-brand strong { font-size: 13px; }
 .popup-brand strong span { display: block; color: var(--muted); font-size: 8px; letter-spacing: 1.5px; margin-top: 3px; font-weight: 500; }
 .popup-brand .version { margin-left: auto; }

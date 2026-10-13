@@ -113,6 +113,14 @@ function privacyHtml(markdown, language) {
   return `<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>xbookmarkshelf · Privacy</title><style>body{max-width:760px;margin:48px auto;padding:0 24px;font:16px/1.8 system-ui,sans-serif;color:#222a35;background:#fff}h1,h2{line-height:1.4}h2{margin-top:32px}a{color:#2563a0}code{overflow-wrap:anywhere}</style></head><body>${lines.join('\n')}</body></html>\n`;
 }
 if (process.argv[2] === '--assets') {
+  const mark = JSON.parse(await readFile('assets/brand/mark.json', 'utf8'));
+  check(mark.viewBox === '0 0 32 32' && mark.strokeWidth === 2 && /^[MmLlHhVvAaZz0-9.\s-]+$/.test(mark.path), 'Review brand geometry changes');
+  const symbol = `<svg x="26" y="26" width="76" height="76" viewBox="${mark.viewBox}" fill="none" stroke="#19202a" stroke-width="${mark.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"><path d="${mark.path}"/></svg>`;
+  await writeFile('assets/brand/icon.svg', `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">\n  <!-- Original X and stacked-book geometry: assets/brand/mark.json. MIT. -->\n  <rect x="16" y="16" width="96" height="96" rx="22" fill="#e7ebf0"/>\n  ${symbol}\n</svg>\n`);
+  const promo = await readFile('assets/store/promo-tile.svg', 'utf8');
+  const promoSymbol = `<svg x="60" y="65" width="46" height="50" viewBox="${mark.viewBox}" fill="none" stroke="#19202a" stroke-width="${mark.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"><path d="${mark.path}"/></svg>`;
+  check(/<svg data-brand-mark[\s\S]*?<\/svg>/.test(promo), 'Missing promotional brand slot');
+  await writeFile('assets/store/promo-tile.svg', promo.replace(/<svg data-brand-mark[\s\S]*?<\/svg>/, promoSymbol.replace('<svg ', '<svg data-brand-mark ')));
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch({ headless: true });
   try {
@@ -122,14 +130,14 @@ if (process.argv[2] === '--assets') {
     const icon = await readFile('assets/brand/icon.svg', 'utf8');
     for (const size of [16, 32, 48, 128]) {
       await page.setViewportSize({ width: size, height: size });
-      await page.setContent(`<style>body{margin:0;background:transparent}svg{display:block;width:${size}px;height:${size}px}</style>${icon}`);
+      await page.setContent(`<style>body{margin:0;background:transparent}body>svg{display:block;width:${size}px;height:${size}px}</style>${icon}`);
       await page.screenshot({ path: `public/icons/icon-${size}.png`, omitBackground: true });
     }
     await page.setViewportSize({ width: 440, height: 280 });
     await page.setContent(`<style>body{margin:0}svg{display:block}</style>${await readFile('assets/store/promo-tile.svg', 'utf8')}`);
     await writeFile(`${output}/promo-440x280.png`, opaquePng(await page.screenshot()));
   } finally { await browser.close(); }
-  console.log('Rendered existing bookmark logo at 16/32/48/128px and a 440x280 promotional tile.');
+  console.log('Rendered original X and stacked-books logo at 16/32/48/128px and a 440x280 promotional tile.');
 } else {
   check(process.argv.length === 2, 'Use prepare-store.mjs with no arguments or --assets');
   const manifest = JSON.parse(await readFile('public/manifest.json', 'utf8'));
