@@ -2,6 +2,8 @@
 
 [English](README.md) | 日本語
 
+![検索・フィルタ・マークを備えたブックマーク一覧](assets/screenshots/bookmarks.png)
+
 Xのブックマークやいいねを整理して読むためのビューアーです。自分で作ったマークでジャンル分けし、検索やフィルタで投稿を探せます。Chrome拡張版と、手元のJSONを開くローカル管理版があります。
 
 Windows版Chrome向けのv0.1.0です。
