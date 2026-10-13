@@ -1,19 +1,19 @@
-# セキュリティ
+# Security
 
-## 対象バージョン
+## Supported version
 
-v0.1.0のChrome拡張版とローカル管理版が対象です。
+This policy covers version 0.1.0 of the Chrome extension and local library app.
 
-## 脆弱性の報告
+## Report a vulnerability
 
-脆弱性を見つけた場合は、[GitHubの非公開報告フォーム](https://github.com/riosagg/xbookmarkshelf/security/advisories/new) からお知らせください。
+Please report vulnerabilities through [GitHub's private vulnerability report form](https://github.com/riosagg/xbookmarkshelf/security/advisories/new).
 
-報告には、次の情報を添えてください。
+Include:
 
-- 使用したバージョンと、拡張版・ローカル管理版のどちらで起きたか
-- 問題の内容と再現手順
-- 想定される影響
+- The version and whether the issue affects the extension or local app.
+- A description of the issue and steps to reproduce it.
+- The potential impact.
 
-脆弱性の詳しい再現手順や、投稿データ・バックアップ・認証情報を公開Issueへ載せないでください。再現に使うデータは、架空の内容に置き換えてください。
+Do not post detailed vulnerability reproduction steps, post data, backups, or credentials in public issues. Use fictional data when reproducing the issue.
 
-データの保存先や通信については [プライバシー](PRIVACY.md) を参照してください。
+See [Privacy](PRIVACY.md) for information about storage and network connections.

@@ -1,14 +1,14 @@
-# 変更履歴
+# Changelog
 
 ## v0.1.0
 
-- Chrome拡張版と、手元のJSONでデータを管理するローカル管理版。
-- ブックマークといいねの切り替えと別管理。投稿バックアップのファイル名もbookmarks／likesで区別。
-- 名前付きマークによる分類、既読管理、本文検索、各種フィルタ、投稿日順の並べ替え。
-- 両版で複数画像のプレビューとクリックでの拡大、動画の表紙、リンクカード・引用の表示。拡張版のプレビューは初期設定でオン。
-- JSONでのバックアップと復元、マーク別の書き出し、大きなバックアップの分割。
-- 日本語・英語の切り替えと表示設定の保存。
-- 拡張版での少量ずつの取り込み。待機時間は固定またはランダムを選択可能。取得先URLは設定から変更可能。
-- ローカル管理版は合計20万件・管理JSON 512MiBまで対応。
+- Chrome extension and a standalone local library app that stores posts in JSON files.
+- Separate Bookmarks and Likes libraries, with matching backup filenames.
+- Named marks, read status, text search, filters, and sorting by posting date.
+- Image previews and photo enlargement in both versions, video cover images, link cards, and quoted posts. Extension previews are on by default.
+- JSON backup and restore, exports by mark, and automatic splitting of large backups.
+- Japanese and English interfaces with saved display settings.
+- Gradual importing in the extension, with fixed or random wait intervals and configurable import URLs.
+- Local library support for up to 200,000 posts in total and library JSON files up to 512 MiB.
 
-使い方と利用上の注意は [README](README.md) を参照してください。
+See the [README](README.md) for setup, usage, and limitations.

@@ -1,102 +1,102 @@
 # xbookmarkshelf
 
-Xのブックマークやいいねを整理して読むためのビューアーです。自分で作ったマークでジャンル分けし、検索やフィルタで投稿を探せます。Chrome拡張版と、手元のJSONを開くローカル管理版があります。
+A viewer for organizing and reading your X bookmarks and likes. Create marks with your own names and icons to group posts by topic, then search and filter your library. Available as a Chrome extension and a standalone local library app that opens JSON files on your computer.
 
-Windows版Chrome向けのv0.1.0です。
+Version 0.1.0 is designed for Chrome on Windows.
 
-## Chrome拡張版の使い方
+## Install the Chrome extension
 
-ビルド済みの拡張はChrome 120以上で使えます。Node.js・npmのインストールやサーバーの起動は不要です。
+The packaged extension requires Chrome 120 or later. You do not need Node.js, npm, or a server to use it.
 
-1. 拡張の配布ZIPを展開します。
-2. Chromeで `chrome://extensions` を開き、開発者モードを有効にします。
-3. 「パッケージ化されていない拡張機能を読み込む」から、展開したフォルダ（manifest.jsonがあるフォルダ）を選びます。
+1. Extract the extension ZIP.
+2. Open `chrome://extensions` in Chrome and enable Developer mode.
+3. Click "Load unpacked" and select the extracted folder containing `manifest.json`.
 
-更新時は同じフォルダのファイルを差し替え、拡張機能・X・ライブラリを再読み込みします。データを引き継ぐには、同じ拡張IDとChromeプロファイルを使ってください。
+To update, replace the files in the same folder and reload the extension, X tab, and library. Use the same extension ID and Chrome profile to retain your data.
 
-## ブックマーク・いいねを取り込む
+## Import bookmarks and likes
 
-取り込みはXの画面に表示された内容（DOM）を読み取る方式です。利用は自己責任でお願いします。
+The extension reads content displayed on X's pages (the DOM). Use it at your own risk.
 
-1. Xへログインし、[History](https://x.com/i/history) でBookmarksかLikesを開きます。従来のブックマーク画面や、自分のプロフィールのいいね画面にも対応しています。
-2. 拡張アイコンを押し、取り込み対象・範囲・待機方法・今回の上限を確認します。
-3. 「少量ずつ自動取り込み」を押し、Xのタブを表示したまま待ちます。
+1. Sign in to X and open Bookmarks or Likes in [History](https://x.com/i/history). The regular bookmarks page and the likes page on your own profile are also supported.
+2. Click the extension icon and check the import target, scope, wait mode, and posts per run.
+3. Click "Import gradually" and keep the X tab visible.
 
-最大10件ずつ保存します。初期設定は固定3秒・1回100件まで。待機は固定または最短〜最長の間でランダムに選べます（3〜30秒）。最短3秒はXへの負荷を抑えるための設定です。上限は10〜1,000件で、取り込み条件は次回へ引き継ぎます。
+Posts are saved in batches of up to 10. The default is a fixed three-second wait and 100 posts per run. Choose a fixed wait or a random wait between a minimum and maximum, within 3–30 seconds. The three-second minimum helps reduce load on X. The limit can be set to 10–1,000 posts, and your import settings are remembered.
 
-ブックマーク・いいねの取得先URLは「設定 → 取得先URL」で変更・保存でき、「初期URLに戻す」で元に戻せます。HTTPSの `x.com` のみ対応し、通常は変更不要です。URLだけの変更には設定で対応できますが、画面構造も変わった場合は拡張の更新が必要です。
+You can change the bookmarks and likes URLs under "Settings → Import URLs" and restore the defaults with "Reset URLs". Only HTTPS URLs on `x.com` are supported. Normally, no changes are needed. These settings can handle URL changes; changes to X's page structure may still require an extension update.
 
-ポップアップを閉じても取り込みは続き、再実行では重複を除きます。Xタブの非表示、ページ移動、取得制限などで停止します。全件取得や完全同期は保証しません。
+Importing continues after you close the popup, and repeated imports avoid duplicate posts. It stops if the X tab is hidden, you navigate away, or an access restriction is detected. Complete imports and full synchronization are not guaranteed.
 
-## ライブラリで探す・仕分ける
+## Browse and organize your library
 
-「ライブラリを開く」から管理画面へ進みます。ロゴ下でブックマーク／いいねを切り替え、投稿・マーク・既読を別々に管理できます。表示設定は共通です。
+Click "Open library", then use the switch below the logo to choose Bookmarks or Likes. Posts, marks, and read status are managed separately; display settings are shared.
 
-- 本文検索と、投稿者・アカウント・マーク・既読・メディア・本文URL・投稿日などのフィルタ。
-- 名前とアイコンを選べるマークをアカウントごとに30個まで登録。複数付与でき、1投稿のマークとタグは合計20個まで。
-- 投稿のアイコンでマークを付与・解除。収まらないマークは「…」から選び、管理ページで順番を変更。
-- 本文を開くと既読になり、「あとで読む」から外れます。「マークなし」ではマークの付いていない投稿を確認できます。
-- 保存順に加え、投稿日が新しい順／古い順を選択。投稿日不明の投稿は、投稿日順では末尾に表示。
-- 連続スクロール、カード／リスト表示、1〜5列、ライト／ダーク、日本語／英語に対応。初期設定ではシステムの言語に従います。
+- Search post text and filter by author, account, mark, read state, media, links in the text, or posting date.
+- Create up to 30 marks per account, each with a name and icon. A post can have multiple marks, with up to 20 marks and tags combined.
+- Click a mark icon to assign or remove it. Find additional marks under "…" and change their order on the marks page.
+- Opening a post marks it as read and removes it from "Read later". "Unmarked" shows posts without a mark.
+- Sort by save order or by newest or oldest posting date. Posts with unknown dates appear last when sorting by posting date.
+- Use continuous scrolling, card or list view, 1–5 columns, light or dark themes, and Japanese or English. The default language follows your browser's language.
 
-## 画像・動画・リンクカード
+## Images, videos, and link cards
 
-拡張版の画像プレビューは初期設定でオンです。ローカル管理版はオフから始まり、切り替えた状態を記憶します。オンの場合は、保存した参照URLから画像を読み込みます。両版とも写真のクリックで拡大でき、複数画像は切り替えられます。動画は表紙と元投稿へのリンクを表示します。Xに表示されたリンクカードや引用も保存します。
+Image previews are on by default in the extension. The local library starts with previews off and remembers your choice. When enabled, images load from their saved URLs. In both versions, click a photo to enlarge it and use the arrows to browse multiple images. Videos show a cover image and a link to the original post. The extension also saves link cards and quoted posts displayed on X.
 
-画像の読み込み先は `https://pbs.twimg.com` に限ります。画像・動画をダウンロードして保存する機能はありません。オフラインやURLの失効で画像を表示できない場合があります。
+Images load only from `https://pbs.twimg.com`. There is no feature for downloading image or video files. Images may be unavailable offline or when their URLs expire.
 
-## バックアップとデータ削除
+## Backups and deletion
 
-投稿と表示設定は別のJSONファイルで保管します。
+Post backups and display settings use separate JSON files.
 
-| ファイル | 内容・操作場所 |
+| File | Contents and location |
 | --- | --- |
-| 投稿バックアップ | 投稿、既読、マーク・タグ、メディア参照。バックアップ画面で全件または1つのマークを選択 |
-| 設定ファイル | 言語、テーマ、列数、表示形式、画像プレビュー。設定画面で書き出し・取り込み |
+| Post backup | Posts, read status, marks, tags, and media URLs. Export all posts or one mark from the backup page. |
+| Settings file | Language, theme, columns, view, and image previews. Export or import from Settings. |
 
-投稿バックアップのファイル名は、ブックマークが `xbookmarkshelf-bookmarks-…json`、いいねが `xbookmarkshelf-likes-…json` です。以前の `posts` 名のJSONも取り込めます。
+Post backup filenames use `xbookmarkshelf-bookmarks-…json` for bookmarks and `xbookmarkshelf-likes-…json` for likes. Older files with `posts` in the name can still be imported.
 
-投稿バックアップは1ファイル20MiB、設定ファイルは64KiBまで取り込めます。投稿バックアップに表示設定や取り込み履歴は含みません。ブックマークといいねは、書き出した側へ復元してください。再取り込みでは既存の既読・分類を保ちます。
+Post backup imports are limited to 20 MiB per file; settings files to 64 KiB. Post backups do not include display settings or import history. Restore bookmarks and likes into their corresponding libraries. Reimporting preserves read status, marks, and tags.
 
-大きなバックアップは自動で分割します。すべてのファイルを保存し、復元・ローカル管理版への追加ではまとめて選んでください。
+Large backups are split automatically. Save every part and select all parts together when restoring or adding them to the local library.
 
-一覧から選択した投稿を削除でき、設定から選択中の側の投稿を全削除できます。設定では件数と使用容量の概算も確認できます。マーク定義・設定とX側のブックマーク・いいねは保持します。削除前にバックアップを取り、分割された場合は全ファイルの保存を確認してください。
+Delete selected posts from the list, or delete all posts in the current library from Settings. Settings also shows the post count and estimated storage usage. Mark and tag definitions, settings, and your bookmarks and likes on X are retained. Back up your posts before deleting them, and check that every part of a split backup has been saved.
 
-## ローカル管理版の使い方
+## Use the local library
 
-配布ファイルの `xbookmarkshelf-local.html` をデスクトップ版Chromeで開きます。HTMLはアプリ本体、管理JSONは投稿データの保存先です。拡張やサーバーは不要で、投稿は手元の管理JSONに保存します。
+Open `xbookmarkshelf-local.html` in desktop Chrome. The HTML file is the app; a separate library JSON file stores your posts. No extension or server is required.
 
-1. 「新しく作る」か「管理JSONを開く」で始めます。
-2. 「追加取り込み」で、Xアーカイブの `data/like.js`、拡張の投稿バックアップ、管理JSONを選びます。分割バックアップは全ファイルをまとめて選びます。
-3. 拡張版と同じように検索・仕分けし、「保存」で管理JSONを書き出します。取り込みや編集の後も保存してください。
-4. 次回は前回の管理JSONから再開します。権限が切れた場合は「開く」を押してください。
+1. Start with "Create library" or "Open library JSON".
+2. Use "Add import" to select `data/like.js` from an X archive, an extension post backup, or a library JSON. Select every part of a split backup together.
+3. Search and organize posts as you would in the extension. Click "Save" to write the library JSON after importing or editing.
+4. On your next visit, the app can reopen the previous library JSON. If file access needs permission again, click "Open".
 
-合計20万件・管理JSON 512MiBまで扱えます。追加元のlike.js・投稿JSONは1ファイル20MiBまでです。開いている間はメモリを使います。ブラウザに記憶するのはファイルへの参照と画像プレビュー設定だけです。
+The local library supports up to 200,000 posts in total and a library JSON of up to 512 MiB. Source like.js files and post backups are limited to 20 MiB per file. It uses memory while open. The browser remembers only the selected file reference and your image preview preference.
 
-全体・ブックマーク／いいね・マークごとのバックアップに対応し、ブックマークは拡張へ戻せる投稿JSONでも出力できます。表示設定は管理JSONに含まれます。並び順はファイル順／逆順に加え、拡張と同じ投稿日順も選べます。
+Back up the entire library, Bookmarks or Likes, or one mark. Bookmarks can also be exported as post JSON for the extension. Display settings are included in the library JSON. Sort by file order, reverse order, or posting date.
 
-like.jsにない投稿者・画像などは自動取得しません。投稿IDから計算した投稿日は、いいねした日時とは区別します。複数のlike.jsは1つの区分へ統合します。
+Author details and images missing from like.js are not fetched automatically. Dates calculated from post IDs are posting dates, not the time you liked a post. Multiple like.js files are merged into one collection.
 
-保存に失敗しても未保存の変更は保持します。再試行か別名保存で保管し、同じ管理JSONの同時編集は避けてください。直接保存に対応しないブラウザではJSONをダウンロードできます。
+If saving fails, your unsaved changes remain in the open app. Retry or use "Save as", and avoid editing the same library JSON in multiple windows. Browsers without direct file saving download the JSON instead.
 
-## ライセンス
+## License
 
-製品コードは [MITライセンス](LICENSE)（2026 riosagg）です。第三者コードや利用者が保存した投稿・画像は、それぞれの権利条件に従います。
+The product code is licensed under the [MIT License](LICENSE), copyright 2026 riosagg. Third-party code and the posts and images you save remain subject to their respective licenses and rights.
 
-同梱ライブラリのライセンスは、拡張版の [THIRD_PARTY_NOTICES.txt](public/THIRD_PARTY_NOTICES.txt) とローカル管理版のライセンス欄で確認できます。再配布時も、同梱のライセンス表記を残してください。
+Bundled library licenses are listed in [THIRD_PARTY_NOTICES.txt](public/THIRD_PARTY_NOTICES.txt) for the extension and in the local app's license section. Keep the included license notices when redistributing the app.
 
-[変更履歴](CHANGELOG.md) · [セキュリティ](SECURITY.md) · [プライバシー](PRIVACY.md)
+[Changelog](CHANGELOG.md) · [Security](SECURITY.md) · [Privacy](PRIVACY.md)
 
 <details>
-<summary>ソースからビルドする場合</summary>
+<summary>Build from source</summary>
 
-Node.js 22.12以上とnpmが必要です。
+Requires Node.js 22.12 or later and npm.
 
 ```sh
 npm ci
 npm run build
 ```
 
-拡張版はdistフォルダをChromeへ読み込みます。ローカル管理版は `local-dist/xbookmarkshelf-local.html` を開いてください。
+Load the `dist` folder into Chrome for the extension. Open `local-dist/xbookmarkshelf-local.html` for the local library.
 
 </details>
