@@ -4,7 +4,7 @@ English | [日本語](PRIVACY.ja.md)
 
 Last updated: October 14, 2026
 
-This policy covers the Chrome extension and local library app, version 0.1.0.
+This policy covers the Chrome extension and local library app, version 0.1.1.
 
 ## Data stored
 
@@ -42,6 +42,8 @@ Only after you connect in Settings and start classification, the app sends the t
 The connection is limited to HTTP localhost or 127.0.0.1. The app does not connect to a cloud AI service. Your local server controls its own request logs and processing; check its settings if you do not want inputs logged. The extension saves the server URL, model ID, threshold and image choice outside display-setting backups. The local app keeps them only for the current session and does not add them to its browser storage or library JSON. No API authentication tokens are collected or stored.
 
 The extension uses alarms to resume work that you started. No classification requests are made while there is no active job. Disconnecting stops its jobs and removes the saved connection setting; it retains assigned marks and ordinary library data.
+
+The extension remembers your on/off choice for classification during import. Restoring that choice does not start an import or classification; you must start the import. Without saved AI connection settings, imports do not send posts to AI.
 
 ## Deletion and backups
 

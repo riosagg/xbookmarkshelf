@@ -4,8 +4,8 @@ import { isImportPageUrl, runImportLocations } from './import-locations';
 import { runReader } from './reader';
 
 declare global { interface Window { __xBookmarkReaderVersion?: string } }
-if (window.__xBookmarkReaderVersion !== '0.1.0-import-locations') {
-  window.__xBookmarkReaderVersion = '0.1.0-import-locations';
+if (window.__xBookmarkReaderVersion !== '0.1.1-import-locations') {
+  window.__xBookmarkReaderVersion = '0.1.1-import-locations';
   let controller: AbortController | null = null;
   async function request(type: string, run: ImportRun, extra = {}) {
     const reply = await chrome.runtime.sendMessage({ type, runId: run.id, source: run.source ?? 'bookmarks', ...extra });

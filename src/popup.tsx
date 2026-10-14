@@ -137,7 +137,7 @@ function Popup() {
     finally { setBusy(false); }
   }
   return <main class="popup">
-    <header class="popup-brand"><span class="brand-mark"><BrandMark/></span><strong>xbookmarkshelf<span>FOR X</span></strong><span class="version">v0.1.0</span></header>
+    <header class="popup-brand"><span class="brand-mark"><BrandMark/></span><strong>xbookmarkshelf<span>FOR X</span></strong><span class="version">v0.1.1</span></header>
     {target && <div class="account"><span class="status-dot"/><span>{tr("対象アカウント")}</span><strong>@{target.handle}</strong><Icon name="check"/></div>}
     <div class="fields"><label>{tr('取り込み対象')}<select value={source} disabled={disabled} onChange={event => { const value = event.currentTarget.value; if (isLibrarySource(value)) changeSource(value); }}><option value="bookmarks">{tr('ブックマーク')}</option><option value="likes">{tr('いいね')}</option></select></label>
       <label>{tr('取り込み範囲')}<select value={mode} disabled={disabled} onChange={event => edit({ mode: event.currentTarget.value as Mode })}><option value="full">{tr('現在の一覧を先頭から再走査')}</option><option value="delta">{tr('新規分を中心に取得')}</option></select></label></div>

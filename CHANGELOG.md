@@ -2,10 +2,13 @@
 
 English | [日本語](CHANGELOG.ja.md)
 
-## Unreleased
+## v0.1.1
 
-- Add optional LM Studio/d1 auto-marking during extension imports, from post-import/account buttons, and from local search results. Preserve existing marks and leave unmatched posts unchanged.
+- Add optional LM Studio/d1 auto-marking during extension imports, for saved posts in an account scope, and from local search results. Preserve existing marks and leave unmatched posts unchanged.
 - Move auto-mark scope, execution and progress to a dedicated page. Preserve the existing post list and keep connection settings at the bottom of Settings.
+- Remember the popup's auto-mark on/off choice across reopening. Disable it while AI connection settings are absent, and restore it when reconnected.
+- Show import classification progress, results and failures without a separate post-import start or retry button.
+- Keep local filters visible and add a close control to operation notices.
 
 ## v0.1.0
 

@@ -6,11 +6,13 @@ English | [日本語](README.ja.md)
 
 A viewer for organizing and reading your X bookmarks and likes. Create marks with your own names and icons to group posts by topic, then search and filter your library. Available as a Chrome extension and a standalone local library app that opens JSON files on your computer.
 
-Version 0.1.0 is designed for Chrome on Windows.
+Version 0.1.1 is designed for Chrome on Windows.
 
 ## Install the Chrome extension
 
 The packaged extension requires Chrome 120 or later. You do not need Node.js, npm, or a server to use it.
+
+If you installed the Chrome Web Store version, Chrome handles its updates. For the ZIP distributed through GitHub Releases, use the steps below.
 
 1. Extract the extension ZIP.
 2. Open `chrome://extensions` in Chrome and enable Developer mode.
