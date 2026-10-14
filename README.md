@@ -47,12 +47,12 @@ Click "Open library", then use the switch below the logo to choose Bookmarks or 
 
 This optional feature requires a local LM Studio server with an image-capable decision model such as d1-3B loaded. Basic browsing and manual marks work without it.
 
-1. In Settings, enter the server URL and model ID (defaults: `http://127.0.0.1:1234` and `d1-3b`), choose the minimum match probability, and click "Connect and save". The extension requests access to the local server and, if selected, X images. The local HTML requires **Enable CORS** in LM Studio Server Settings.
+1. Under "Auto-mark with local AI" at the bottom of Settings, enter the server URL and model ID (defaults: `http://127.0.0.1:1234` and `d1-3b`) and choose the match threshold. Click "Connect and save" in the extension or "Connect and apply" in the local app. The extension requests access to the local server and, if selected, X images. The local HTML requires **Enable CORS** in LM Studio Server Settings.
 2. Create marks with names that describe their categories. The default threshold is 80%; every matching mark is added. No match leaves the post unchanged, and existing marks are retained.
 3. In the extension popup, enable "Auto-mark during import", or use "Auto-mark this import" after importing. The library also has "Auto-mark this account scope". Importing continues while classification runs separately; closing the popup does not stop classification.
-4. In the local app, use "Auto-mark search results", then "Save" to write the changes to your library JSON. Connection settings remain in memory for this session.
+4. In the local app, use "Auto-mark search results", then "Save" to write the changes to your library JSON. Closing or reloading the HTML resets the AI connection settings; connect again the next time you open it.
 
-"Include images for AI" is separate from display previews. It loads up to four saved image references, including quoted images or video covers, from `pbs.twimg.com` and sends temporary JPEG previews to the local server. Like.js entries without images use text only. If the browser cannot fetch an image, that post is reported as failed; turn off AI images to retry with text only. Images are not saved in backups.
+"Use images for matching" allows AI to use images even when display previews are off. It loads up to four saved image references per post, including quoted images or video covers, from X’s image server (`pbs.twimg.com`) and sends temporary JPEG previews to LM Studio. Like.js entries without images use text only. If the browser cannot fetch an image, that post is reported as failed; turn off AI images to retry with text only. Images are not saved in backups.
 
 Classification uses the mark names as category descriptions. Match probabilities can be wrong; choose a threshold that works for your categories. Stop controls retain completed additions. The extension records classification progress and retries pending work after worker suspension. Deleted posts or changes made during inference are skipped. The server URL is limited to HTTP localhost or 127.0.0.1; API tokens and cloud connections are not supported.
 

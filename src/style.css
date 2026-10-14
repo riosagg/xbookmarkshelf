@@ -373,5 +373,26 @@ button.media-frame { cursor: zoom-in; }
 .ai-controls { margin: 12px 0; min-width: 0; }
 .ai-controls .actions { flex-wrap: wrap; }
 .ai-progress, .ai-connection { overflow-wrap: anywhere; }
-.ai-settings form { display: grid; gap: 12px; min-width: 0; }
+.ai-settings h2, .local-layout .panel.ai-settings h2 { margin: 0 0 8px; }
+.ai-settings .ai-intro { margin-bottom: 22px; }
+.ai-settings form { display: grid; gap: 22px; min-width: 0; }
+.ai-group { margin: 0; padding: 0; border: 0; min-width: 0; }
+.ai-group legend { padding: 0; margin-bottom: 12px; font-size: 12px; font-weight: 600; }
+.ai-connection-fields { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+.ai-connection-fields label { min-width: 0; }
 .ai-settings input { min-width: 0; max-width: 100%; }
+.ai-threshold { display: grid; grid-template-columns: minmax(0, 190px) minmax(0, 1fr); align-items: center; gap: 16px; }
+.ai-settings .ai-help { margin: 0; font-size: 11px; line-height: 1.7; }
+.ai-help p { margin: 0; font-size: inherit; }
+.ai-help p + p { margin-top: 4px; }
+.ai-image-option { margin-top: 18px; }
+.ai-image-option .ai-help { margin: 8px 0 0 24px; }
+.ai-settings-footer { padding-top: 18px; border-top: 1px solid var(--line); min-width: 0; }
+.ai-settings .ai-connection { display: grid; gap: 4px; margin-top: 14px; font-size: 11px; }
+.ai-connection strong { color: var(--success); font-weight: 500; }
+.ai-settings .ai-session { margin: 14px 0 0; font-size: 11px; }
+.ai-settings-footer .error { margin: 14px 0 0; }
+@media (max-width: 640px) {
+  .ai-connection-fields, .ai-threshold { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .ai-threshold input { max-width: 190px; }
+}
