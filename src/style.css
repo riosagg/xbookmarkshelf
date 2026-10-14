@@ -372,6 +372,8 @@ button.media-frame { cursor: zoom-in; }
 /* Local decision controls share the extension and file-app layout. */
 .ai-controls { margin: 12px 0; min-width: 0; }
 .ai-controls .actions { flex-wrap: wrap; }
+.ai-import-status .actions { margin-top: 10px; }
+.ai-import-status .error { margin: 12px 0 0; }
 .nav-item .ai-nav-status { color: var(--focus); white-space: nowrap; }
 .nav-item .ai-nav-status:not(:empty) { display: inline; }
 .ai-page h2, .local-layout .panel.ai-page h2 { margin-top: 0; }

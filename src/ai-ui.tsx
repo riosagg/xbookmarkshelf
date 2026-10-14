@@ -17,7 +17,7 @@ const labels = {
   session: ['このタブを閉じるか再読み込みすると、AIの設定はリセットされます。次回は接続し直してください。', 'Closing or reloading this tab resets the AI settings. Connect again the next time you open it.'],
   failed: ['接続または分類に失敗しました。URL・モデル・LM StudioのCORS設定・画像取得・分類数の上限を確認してください。', 'Connection or classification failed. Check the URL, model, LM Studio CORS, image access and tag limit.'],
   auto: ['取り込み中に自動マークを付ける', 'Auto-mark during import'], configure: ['設定画面でローカルAIへ接続してください。', 'Connect to local AI in Settings.'],
-  all: ['このアカウント範囲を自動マーク', 'Auto-mark this account scope'], recent: ['今回取り込んだ投稿を自動マーク', 'Auto-mark this import'], local: ['検索結果を自動マーク', 'Auto-mark search results'],
+  all: ['このアカウント範囲を自動マーク', 'Auto-mark this account scope'], local: ['検索結果を自動マーク', 'Auto-mark search results'],
   cancel: ['自動マークを停止', 'Stop auto-marking'], running: ['自動マーク中', 'Auto-marking'], completed: ['自動マーク完了', 'Auto-marking complete'], cancelled: ['自動マークを停止しました', 'Auto-marking stopped'],
   marked: ['該当', 'Matched'], unmatched: ['該当なし', 'No match'], skipped: ['保留', 'Skipped'], errors: ['失敗', 'Failed'], preserve: ['既存マークを保持し、該当するマークだけ追加します。', 'Keeps existing marks and adds matching marks only.'],
 } as const;
@@ -57,11 +57,17 @@ export function AiSettings({ language, config, disabled, session = false, connec
     </form>
   </section>;
 }
+export function AiStatus({ language, progress }: { language: string; progress?: AiProgress | null }) {
+  const t = (key: AiLabel) => aiText(language, key);
+  if (!progress) return null;
+  return <><div class="ai-progress small" role="status"><strong>{t(progress.state)}</strong> · {progress.done} / {progress.total}<br/>{t('marked')} {progress.marked} · {t('unmatched')} {progress.unmatched} · {t('skipped')} {progress.skipped} · {t('errors')} {progress.failed}</div>
+    {progress.failed ? <p class="error" role="alert">{t('failed')}</p> : null}
+  </>;
+}
 export function AiControls({ language, config, progress, disabled, label = 'all', start, stop }: { language: string; config: DecisionConfig | null; progress?: AiProgress | null; disabled?: boolean; label?: AiLabel; start(): void; stop(): void }) {
   const t = (key: AiLabel) => aiText(language, key);
   return <div class="ai-controls"><div class="actions"><button class="primary ai-start" disabled={!config || disabled || progress?.state === 'running'} onClick={start}>{t(label)}</button>{progress?.state === 'running' && <button onClick={stop}>{t('cancel')}</button>}</div>
     <p class="small muted">{config ? t('preserve') : t('configure')}</p>
-    {progress && <div class="ai-progress small" role="status"><strong>{t(progress.state)}</strong> · {progress.done} / {progress.total}<br/>{t('marked')} {progress.marked} · {t('unmatched')} {progress.unmatched} · {t('skipped')} {progress.skipped} · {t('errors')} {progress.failed}</div>}
-    {progress?.failed ? <p class="error" role="alert">{t('failed')}</p> : null}
+    <AiStatus language={language} progress={progress}/>
   </div>;
 }

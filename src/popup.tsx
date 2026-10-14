@@ -1,4 +1,4 @@
-import { useDecisionConnection, ExtensionAiControls } from './extension-ai';
+import { useDecisionConnection, ExtensionImportAiStatus } from './extension-ai';
 import { aiText } from './ai-ui';
 import { LanguageProvider, useI18n } from './i18n';
 import { render } from 'preact';
@@ -151,7 +151,7 @@ function Popup() {
     <label class="switch-label"><input type="checkbox" checked={autoMark} disabled={disabled || !aiConfig} onChange={e => setAutoMark(e.currentTarget.checked)}/>{aiText(language, 'auto')}</label>
     {run?.state === 'running' ? <div class="actions"><button class="primary" onClick={() => stop(true)} disabled={busy}>{tr("一時停止")}</button><button onClick={() => stop(false)} disabled={busy}>{tr("終了")}</button></div> : <button class="primary full" onClick={start} disabled={!ready || !targetMatches || !validatePopupPreferences(form) || busy}><Icon name="download"/>{busy ? tr("準備中…") : run?.state === 'paused' ? tr("先頭から再実行") : tr("少量ずつ自動取り込み")}</button>}
     <p class="popup-note"><Icon name="lock"/><span>{tr(source === "likes" ? "XのLikesを表示したまま使います。停止後も保存済み投稿は残ります。" : "XのBookmarksを表示したまま使います。停止後も保存済み投稿は残ります。")}</span></p>
-    {run && run.state !== 'running' && <ExtensionAiControls source={source} runId={run.id} label="recent" disabled={!run.importedPostIds?.length}/>}
+    {run && <ExtensionImportAiStatus source={source} runId={run.id}/>}
     <footer class="popup-footer"><button class="text-button" onClick={() => { void chrome.tabs.create({ url: chrome.runtime.getURL(`library.html?source=${source}`) }); }}>{tr("ライブラリを開く")}<Icon name="external"/></button></footer>
   </main>;
 }

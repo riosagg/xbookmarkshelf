@@ -5,7 +5,7 @@ import { useI18n } from './i18n';
 import { command } from './messaging';
 import type { LibrarySource } from './model';
 import { AI_CONFIG, AI_JOB, connectDecision, decisionConfig, type DecisionConfig, type AiJob } from './decision';
-import { AiControls, AiSettings, aiText, type AiLabel } from './ai-ui';
+import { AiControls, AiSettings, AiStatus, aiText, type AiLabel } from './ai-ui';
 import { loadDecision, cancelAiJob } from './auto-marks';
 
 export function useDecisionConnection() {
@@ -36,4 +36,14 @@ export function ExtensionAiControls({ source, runId, accountId, disabled, label 
   useEffect(() => { const subscription = liveQuery(async () => ((await storeForSource(source).settings.get(AI_JOB))?.value ?? null) as AiJob | null).subscribe({ next: setJob, error: () => setError(true) }); return () => subscription.unsubscribe(); }, [source]);
   async function operate(type: string) { setBusy(true); setError(false); try { await command(type, { source, ...(runId ? { runId } : {}), ...(accountId ? { accountId } : {}) }); } catch { setError(true); } finally { setBusy(false); } }
   return <><AiControls language={language} config={config} progress={job} disabled={disabled || busy} label={label} start={() => void operate('AI_START')} stop={() => void operate('AI_STOP')}/>{error && <p class="error" role="alert">{aiText(language, 'failed')}</p>}</>;
+}
+export function ExtensionImportAiStatus({ source, runId }: { source: LibrarySource; runId: string }) {
+  const { language } = useI18n(); const job = useAiJob(source); const [error, setError] = useState(false); const [busy, setBusy] = useState(false);
+  useEffect(() => { setError(false); }, [source, runId]);
+  if (!job || job.runId !== runId) return null;
+  async function stop() { setBusy(true); setError(false); try { await command('AI_STOP', { source }); } catch { setError(true); } finally { setBusy(false); } }
+  return <div class="ai-controls ai-import-status"><AiStatus language={language} progress={job}/>
+    {job.state === 'running' && <div class="actions"><button disabled={busy} onClick={() => void stop()}>{aiText(language, 'cancel')}</button></div>}
+    {error && <p class="error" role="alert">{aiText(language, 'failed')}</p>}
+  </div>;
 }

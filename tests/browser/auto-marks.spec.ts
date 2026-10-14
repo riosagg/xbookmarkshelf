@@ -7,7 +7,7 @@ import { emptyLocalLibrary, type LocalPost } from '../../src/local-data';
 const SYNTHETIC_IMAGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAb0lEQVR4nO3PAQkAAAyEwO9feoshgnABdLep8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3IPanc8OLDQitxAAAAAElFTkSuQmCC', 'base64');
 let server: Server; let endpoint: string; let sawImages = false;
 const importImageCounts: number[] = [];
-let holdDecisions = false; const heldResponses: (() => void)[] = [];
+let holdDecisions = false; let failDecisions = false; const heldResponses: (() => void)[] = [];
 test.beforeAll(async () => {
   server = createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Access-Control-Allow-Headers', 'content-type'); res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -15,6 +15,7 @@ test.beforeAll(async () => {
     let body = ''; req.on('data', part => body += part); req.on('end', () => {
       const data = JSON.parse(body); const state = JSON.stringify(data.state); if (data.images?.length) sawImages = true;
       if (!data.questions.connection) importImageCounts.push(data.images?.length ?? 0);
+      if (failDecisions && !data.questions.connection) { res.statusCode = 503; res.end(); return; }
       const answers = Object.fromEntries(Object.entries(data.questions).map(([id, q]) => [id, { type: 'noul', noul: id === 'connection' || !state.includes('unrelated') && (q as { instructions: string }).instructions.includes('Programming') ? 0.99 : 0.01 }]));
       res.setHeader('Content-Type', 'application/json');
       const send = () => { if (!res.destroyed) res.end(JSON.stringify({ answers })); };
@@ -45,7 +46,7 @@ async function extension(images = false) {
   await page.getByRole('button', { name: '接続を確認して保存', exact: true }).click(); await expect(page.locator('.ai-connection')).toContainText('接続設定済み');
   return { context, page, worker, id, async close() { await context.close(); await rm(temp, { recursive: true, force: true }); } };
 }
-test('real MV3 import-result and account buttons process beyond 50 posts and preserve existing marks', async () => {
+test('real MV3 account auto-marking preserves marks and import screens show no manual start or unrelated job', async () => {
   const env = await extension();
   try {
     await env.page.evaluate(async () => {
@@ -55,8 +56,9 @@ test('real MV3 import-result and account buttons process beyond 50 posts and pre
         t.objectStore('postTags').put({ accountId: 'a', postId: '1', tagId: 'old' }); t.objectStore('userStates').put({ accountId: 'a', postId: '1', read: true, favorite: true });
         t.objectStore('importRuns').put({ id: 'synthetic-run', accountId: 'a', handle: 'synthetic_user', source: 'bookmarks', state: 'stopped', reason: 'run_limit', startedAt: '2026-10-14T00:00:00Z', observed: 2, added: 2, existing: 0, importedPostIds: ['1', '55'] }); t.oncomplete = () => done(); }); d.close();
     });
-    await env.page.getByRole('button', { name: '取り込み', exact: true }).click(); await env.page.getByRole('button', { name: '今回取り込んだ投稿を自動マーク', exact: true }).click();
-    await expect(env.page.locator('.ai-progress')).toContainText('自動マーク完了'); await expect(env.page.locator('.ai-progress')).toContainText('該当なし 1');
+    await env.page.getByRole('button', { name: '取り込み', exact: true }).click();
+    await expect(env.page.getByRole('button', { name: '今回取り込んだ投稿を自動マーク', exact: true })).toHaveCount(0);
+    await expect(env.page.locator('.ai-import-status')).toHaveCount(0);
     await env.page.getByRole('button', { name: /^すべてのブックマーク/ }).click(); await expect(env.page.locator('main .ai-controls')).toHaveCount(0);
     const nav = env.page.getByRole('navigation', { name: 'ライブラリ', exact: true }); await expect(nav.getByRole('button').nth(3)).toHaveAccessibleName('自動マーク');
     await nav.getByRole('button', { name: '自動マーク', exact: true }).click(); await expect(env.page.locator('.ai-target')).toContainText('55');
@@ -64,6 +66,7 @@ test('real MV3 import-result and account buttons process beyond 50 posts and pre
     await expect(env.page.getByRole('button', { name: 'このアカウント範囲を自動マーク', exact: true })).toHaveClass(/primary/);
     holdDecisions = true; await env.page.getByRole('button', { name: 'このアカウント範囲を自動マーク', exact: true }).click();
     await expect.poll(() => heldResponses.length).toBe(1); await expect(nav.locator('.ai-nav-status')).toHaveText('処理中');
+    await env.page.getByRole('button', { name: '取り込み', exact: true }).click(); await expect(env.page.locator('.ai-import-status')).toHaveCount(0);
     await env.page.getByRole('button', { name: /^すべてのブックマーク/ }).click(); await expect(env.page.locator('main .ai-controls')).toHaveCount(0); await expect(nav.locator('.ai-nav-status')).toHaveText('処理中');
     await nav.getByRole('button', { name: '自動マーク', exact: true }).click(); await expect(env.page.locator('.ai-progress')).toContainText('自動マーク中');
     holdDecisions = false; heldResponses.shift()!();
@@ -73,7 +76,7 @@ test('real MV3 import-result and account buttons process beyond 50 posts and pre
     await env.page.setViewportSize({ width: 390, height: 844 }); expect(await env.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   } finally { holdDecisions = false; heldResponses.splice(0).forEach(send => send()); await env.close(); }
 });
-test('auto-marking during a 20-post image import continues after the popup closes', async () => {
+test('20-post image import continues after popup closes and reports completion or failure without a retry button', async () => {
   test.setTimeout(45000);
   importImageCounts.length = 0;
   const env = await test.step('Configure extension', () => extension(true));
@@ -83,10 +86,28 @@ test('auto-marking during a 20-post image import continues after the popup close
     const source = await env.context.newPage(); await source.goto('https://x.com/i/bookmarks');
     const popup = await env.context.newPage(); await source.bringToFront(); await popup.goto(`chrome-extension://${env.id}/popup.html`);
     await popup.getByLabel('今回の上限（件）').fill('20'); await popup.getByLabel('取り込み中に自動マークを付ける').check(); await source.bringToFront();
-    await popup.getByRole('button', { name: '少量ずつ自動取り込み', exact: true }).click(); await expect(popup.locator('.progress strong')).toHaveText('読み取り中'); await popup.close(); await source.bringToFront();
+    await popup.getByRole('button', { name: '少量ずつ自動取り込み', exact: true }).click(); await expect(popup.locator('.progress strong')).toHaveText('読み取り中');
+    await expect(popup.getByRole('button', { name: '自動マークを停止', exact: true })).toBeVisible();
+    await expect(popup.getByRole('button', { name: '今回取り込んだ投稿を自動マーク', exact: true })).toHaveCount(0);
+    await popup.close(); await source.bringToFront();
     await expect.poll(async () => env.worker.evaluate(async () => { const d = await new Promise<IDBDatabase>(done => { const r = indexedDB.open('x-bookmark-library'); r.onsuccess = () => done(r.result); }); const v = await new Promise<any>(done => { const r = d.transaction('settings').objectStore('settings').get('decisionJob'); r.onsuccess = () => done(r.result?.value); }); d.close(); return v?.state === 'completed' ? v?.marked : 0; }), { timeout: 30000 }).toBe(20);
     expect(importImageCounts).toEqual(Array(20).fill(1));
-  } finally { await env.close(); }
+    const resultPopup = await env.context.newPage(); await source.bringToFront(); await resultPopup.goto(`chrome-extension://${env.id}/popup.html`);
+    await expect(resultPopup.locator('.ai-import-status .ai-progress')).toContainText('自動マーク完了'); await expect(resultPopup.locator('.ai-import-status')).toContainText('20 / 20');
+    await expect(resultPopup.getByRole('button', { name: '今回取り込んだ投稿を自動マーク', exact: true })).toHaveCount(0);
+    await env.page.getByRole('button', { name: '取り込み', exact: true }).click(); await expect(env.page.locator('.ai-import-status')).toContainText('20 / 20');
+    await expect(env.page.getByRole('button', { name: '今回取り込んだ投稿を自動マーク', exact: true })).toHaveCount(0);
+    failDecisions = true; await resultPopup.getByLabel('今回の上限（件）').fill('20'); await resultPopup.getByLabel('取り込み中に自動マークを付ける').check(); await source.bringToFront();
+    await resultPopup.getByRole('button', { name: '少量ずつ自動取り込み', exact: true }).click();
+    await expect(resultPopup.locator('.ai-import-status .error')).toContainText('接続または分類に失敗しました。');
+    await expect(resultPopup.locator('.ai-import-status')).toContainText('失敗 3'); await expect(resultPopup.locator('.ai-import-status button')).toHaveCount(0);
+    await expect(resultPopup.locator('.progress strong')).toHaveText('実行を完了しました');
+    await expect(env.page.locator('.ai-import-status .error')).toBeVisible();
+    await expect(resultPopup.getByRole('button', { name: '今回取り込んだ投稿を自動マーク', exact: true })).toHaveCount(0);
+    const codeCount = await env.worker.evaluate(async () => { const d = await new Promise<IDBDatabase>(done => { const r = indexedDB.open('x-bookmark-library'); r.onsuccess = () => done(r.result); }); const rows = await new Promise<any[]>(done => { const r = d.transaction('postTags').objectStore('postTags').getAll(); r.onsuccess = () => done(r.result); }); d.close(); return rows.filter(r => r.tagId === 'code').length; });
+    expect(codeCount).toBe(20);
+    await resultPopup.setViewportSize({ width: 390, height: 844 }); expect(await resultPopup.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  } finally { failDecisions = false; await env.close(); }
 });
 test('file app connects through CORS, sends image bytes and saves additive marks in JSON', async ({ page }) => {
   sawImages = false; await page.goto('file://' + resolve('local-dist/xbookmarkshelf-local.html'));
