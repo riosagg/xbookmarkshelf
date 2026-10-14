@@ -38,7 +38,7 @@ export const localMessages = {
   emptyError: ['対象のマークや投稿がありません。範囲を選び直してください。', 'The selected mark or posts are unavailable. Choose the scope again.'],
   conflictError: ['保存先が別の操作で変更されました。上書きを止めました。「名前を付けて保存」で別ファイルへ保存してください。', 'The file was changed elsewhere. Overwriting was stopped. Use Save as to keep your changes in another file.'],
   saveError: ['保存できませんでした。変更は画面内に残っています。権限や空き容量を確認して再試行してください。', 'Could not save. Your changes remain on screen. Check permission or free space and retry.'],
-  unavailable: ['直接保存はデスクトップ版Chromeに対応。このブラウザではJSONをダウンロードします。', 'Direct saving requires desktop Chrome. This browser downloads JSON instead.'],
+  dismissNotice: ['通知を閉じる', 'Dismiss notification'],
   downloaded: ['管理JSONをダウンロードしました。ファイルの保存を確認してください。', 'Library JSON downloaded. Check that the file was saved.'],
   limits: ['合計200,000件・管理JSON 512MiBまで', 'Up to 200,000 posts total · Library JSON 512 MiB'],
   total: ['保存する投稿数', 'Total posts'], fileSize: ['保存ファイルの容量', 'Saved file size'], notSaved: ['まだ保存していません', 'Not saved yet'],

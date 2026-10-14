@@ -91,6 +91,9 @@ test('file app connects through CORS, sends image bytes and saves additive marks
   await page.setViewportSize({ width: 390, height: 844 }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.evaluate(() => { Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true }); });
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: '保存', exact: true }).click(); const file = await download; const saved = JSON.parse(await readFile((await file.path())!, 'utf8')); expect(saved.libraries.bookmarks.posts[0]).toMatchObject({ tagIds: ['old', 'code'], read: true, favorite: true }); expect(saved.settings.decisionConnection).toBeUndefined();
+  await expect(page.getByText('直接保存はデスクトップ版Chromeに対応。このブラウザではJSONをダウンロードします。', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.local-notice')).toContainText('管理JSONをダウンロードしました。'); await page.getByRole('button', { name: '通知を閉じる', exact: true }).click(); await expect(page.locator('.local-notice')).toHaveCount(0);
+  await expect(page.locator('.local-file-bar')).toContainText('未保存の変更があります'); await expect(card.getByRole('button', { name: 'Programmingのマーク', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 test('local auto-mark page retains filtered scope and progress across navigation, and Stop rejects a late result', async ({ page }) => {
   const lib = emptyLocalLibrary(); lib.settings.language = 'ja'; lib.settings.theme = 'dark';
@@ -114,6 +117,8 @@ test('local auto-mark page retains filtered scope and progress across navigation
     const downloading = page.waitForEvent('download'); await page.getByRole('button', { name: '保存', exact: true }).click(); const saved = JSON.parse(await readFile((await (await downloading).path())!, 'utf8'));
     expect(saved.libraries.bookmarks.posts.map((p: LocalPost) => p.tagIds)).toEqual([['old', 'code'], ['old'], ['old']]); expect(saved.libraries.likes).toMatchObject({ ...lib.libraries.likes });
     await page.getByRole('button', { name: '設定', exact: true }).click(); await page.getByLabel('言語', { exact: true }).selectOption('en'); await page.getByRole('button', { name: 'Auto-mark', exact: true }).click(); await expect(page.getByRole('heading', { name: 'Auto-mark', exact: true })).toBeVisible();
+    const englishDownload = page.waitForEvent('download'); await page.getByRole('button', { name: 'Save', exact: true }).click(); await englishDownload;
+    await page.getByRole('button', { name: 'Dismiss notification', exact: true }).click(); await expect(page.locator('.local-notice')).toHaveCount(0); await expect(page.locator('.local-file-bar')).toContainText('Unsaved changes');
     await page.setViewportSize({ width: 390, height: 844 }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   } finally { holdDecisions = false; heldResponses.splice(0).forEach(send => send()); }
 });
