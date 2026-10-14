@@ -43,7 +43,7 @@ test('20,838 likes stay off browser storage, search/scroll offline and separate 
   await page.evaluate(() => window.scrollTo(0, 0)); await expect(page.locator('.post-feed')).toHaveAttribute('data-start', '0');
   await expect(page.locator('.pagination')).toHaveCount(0);
   await page.getByRole('searchbox', { name: '本文・投稿者・URLを検索', exact: true }).fill('shelf 日本語'); await expect(page.locator('.card-grid .post-card')).toHaveCount(1);
-  await page.locator('.filter-panel summary').click(); await page.getByRole('combobox', { name: 'メディア', exact: true }).selectOption('without'); await expect(page.locator('.card-grid .post-card')).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'メディア', exact: true }).selectOption('without'); await expect(page.locator('.card-grid .post-card')).toHaveCount(0);
   await page.getByRole('combobox', { name: 'メディア', exact: true }).selectOption('unknown'); await expect(page.locator('.card-grid .post-card')).toHaveCount(1);
   await page.getByRole('button', { name: 'ブックマーク', exact: true }).click(); await expect(page.locator('.card-grid .post-card')).toHaveCount(0);
   await page.getByRole('button', { name: 'いいね', exact: true }).click(); await expect(page.locator('.card-grid .post-card')).toHaveCount(50);

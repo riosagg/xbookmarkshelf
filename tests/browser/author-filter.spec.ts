@@ -23,7 +23,8 @@ for (const edition of ['extension', 'local'] as const) for (const source of ['bo
       await page.locator('input[multiple]').setInputFiles({ name: 'synthetic-authors.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(library)) });
       await expect(page.locator('.card-grid .post-card')).toHaveCount(6);
       await page.getByRole('button', { name: source === 'bookmarks' ? 'ブックマーク' : 'いいね', exact: true }).click();
-      await page.locator('.filter-panel summary').click();
+      await expect(page.locator('.filter-panel summary')).toHaveCount(0);
+      await expect(page.getByLabel('投稿者', { exact: true })).toBeVisible();
     }
     const cards = page.locator('.card-grid .post-card'); const author = page.getByLabel('投稿者', { exact: true });
     await expect(cards).toHaveCount(6);
@@ -48,7 +49,6 @@ for (const edition of ['extension', 'local'] as const) for (const source of ['bo
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole('button', { name: '設定', exact: true }).click(); await page.getByLabel('言語', { exact: true }).selectOption('en');
     await page.getByRole('button', { name: source === 'bookmarks' ? /^All bookmarks/ : /^All likes/ }).click();
-    if (edition === 'local') await page.locator('.filter-panel summary').click();
     await page.getByLabel('Author', { exact: true }).fill('@x'); await expect(cards).toHaveCount(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/${edition}-${source}-author-filter.png` });
