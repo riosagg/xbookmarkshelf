@@ -383,6 +383,7 @@ button.media-frame { cursor: zoom-in; }
 .ai-page .ai-page-links { margin-top: 0; }
 .ai-page-links button { font-size: 12px; }
 .ai-page-run { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 8px; min-width: 0; }
+.ai-page-run .ai-start { min-height: 44px; padding: 11px 18px; font-weight: 600; max-width: 100%; overflow-wrap: anywhere; }
 .ai-progress, .ai-connection { overflow-wrap: anywhere; }
 .ai-settings h2, .local-layout .panel.ai-settings h2 { margin: 0 0 8px; }
 .ai-settings .ai-intro { margin-bottom: 22px; }

@@ -34,7 +34,9 @@ async function extension() {
       t.objectStore('tags').put({ id: 'old', accountId: 'a', name: 'Manual', mark: 'star' }); t.objectStore('tags').put({ id: 'code', accountId: 'a', name: 'Programming', mark: 'code' }); t.oncomplete = () => done(); t.onabort = () => reject(t.error);
     }); database.close();
   });
-  await page.reload(); await expect(page.locator('html')).toHaveAttribute('lang', 'ja'); await page.getByRole('button', { name: /^(設定|Settings)$/ }).click();
+  await page.reload(); await expect(page.locator('html')).toHaveAttribute('lang', 'ja'); await page.getByRole('button', { name: '自動マーク', exact: true }).click();
+  await expect(page.getByRole('button', { name: '投稿一覧へ戻る', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '接続設定を開く', exact: true }).click();
   await expect(page.locator('.settings-stack > :last-child')).toHaveClass(/ai-settings/);
   await page.getByLabel('LM StudioのURL', { exact: true }).fill(endpoint); await page.getByLabel('画像も判定に使う', { exact: true }).uncheck();
   await page.getByRole('button', { name: '接続を確認して保存', exact: true }).click(); await expect(page.locator('.ai-connection')).toContainText('接続設定済み');
@@ -55,9 +57,11 @@ test('real MV3 import-result and account buttons process beyond 50 posts and pre
     await env.page.getByRole('button', { name: /^すべてのブックマーク/ }).click(); await expect(env.page.locator('main .ai-controls')).toHaveCount(0);
     const nav = env.page.getByRole('navigation', { name: 'ライブラリ', exact: true }); await expect(nav.getByRole('button').nth(3)).toHaveAccessibleName('自動マーク');
     await nav.getByRole('button', { name: '自動マーク', exact: true }).click(); await expect(env.page.locator('.ai-target')).toContainText('55');
+    await expect(env.page.getByRole('button', { name: '接続設定を開く', exact: true })).toHaveCount(0);
+    await expect(env.page.getByRole('button', { name: 'このアカウント範囲を自動マーク', exact: true })).toHaveClass(/primary/);
     holdDecisions = true; await env.page.getByRole('button', { name: 'このアカウント範囲を自動マーク', exact: true }).click();
     await expect.poll(() => heldResponses.length).toBe(1); await expect(nav.locator('.ai-nav-status')).toHaveText('処理中');
-    await env.page.getByRole('button', { name: '投稿一覧へ戻る', exact: true }).click(); await expect(env.page.locator('main .ai-controls')).toHaveCount(0); await expect(nav.locator('.ai-nav-status')).toHaveText('処理中');
+    await env.page.getByRole('button', { name: /^すべてのブックマーク/ }).click(); await expect(env.page.locator('main .ai-controls')).toHaveCount(0); await expect(nav.locator('.ai-nav-status')).toHaveText('処理中');
     await nav.getByRole('button', { name: '自動マーク', exact: true }).click(); await expect(env.page.locator('.ai-progress')).toContainText('自動マーク中');
     holdDecisions = false; heldResponses.shift()!();
     await expect(env.page.locator('.ai-progress')).toContainText('55 / 55', { timeout: 30000 }); await expect(env.page.locator('.ai-progress')).toContainText('自動マーク完了');
@@ -86,6 +90,9 @@ test('file app connects through CORS, sends image bytes and saves additive marks
   await page.getByRole('button', { name: /^(設定|Settings)$/ }).click(); await page.getByLabel('LM StudioのURL', { exact: true }).fill(endpoint); await page.getByLabel('モデルID', { exact: true }).fill('m'.repeat(200)); await page.getByRole('button', { name: '接続を確認して適用', exact: true }).click(); await expect(page.locator('.ai-connection')).toContainText('接続設定済み');
   await expect(page.locator('.settings-stack > :last-child')).toHaveClass(/ai-settings/); await expect(page.locator('main .ai-controls')).toHaveCount(0);
   await page.getByRole('button', { name: '自動マーク', exact: true }).click(); await expect(page.getByRole('heading', { name: '自動マーク', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '接続設定を開く', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '投稿一覧へ戻る', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '検索結果を自動マーク', exact: true })).toHaveClass(/primary/);
   await page.getByRole('button', { name: '検索結果を自動マーク', exact: true }).click(); await expect(page.locator('.ai-progress')).toContainText('自動マーク完了'); await expect(page.locator('.ai-progress')).toContainText('該当 1'); expect(sawImages).toBe(true);
   await page.getByRole('button', { name: /^すべてのブックマーク/ }).click(); const card = page.locator('.card-grid .post-card'); await expect(card.getByRole('button', { name: 'Manualのマーク', exact: true })).toHaveAttribute('aria-pressed', 'true'); await expect(card.getByRole('button', { name: 'Programmingのマーク', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.setViewportSize({ width: 390, height: 844 }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -103,12 +110,13 @@ test('local auto-mark page retains filtered scope and progress across navigation
   try {
     await page.goto('file://' + resolve('local-dist/xbookmarkshelf-local.html'));
     await page.getByLabel('管理JSONを開く', { exact: true }).setInputFiles({ name: 'synthetic-navigation.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(lib)) });
-    await page.getByRole('button', { name: '設定', exact: true }).click(); await page.getByLabel('LM StudioのURL', { exact: true }).fill(endpoint); await page.getByLabel('画像も判定に使う', { exact: true }).uncheck(); await page.getByRole('button', { name: '接続を確認して適用', exact: true }).click(); await expect(page.locator('.ai-connection')).toBeVisible();
+    await page.getByRole('button', { name: '自動マーク', exact: true }).click(); await page.getByRole('button', { name: '接続設定を開く', exact: true }).click(); await page.getByLabel('LM StudioのURL', { exact: true }).fill(endpoint); await page.getByLabel('画像も判定に使う', { exact: true }).uncheck(); await page.getByRole('button', { name: '接続を確認して適用', exact: true }).click(); await expect(page.locator('.ai-connection')).toBeVisible();
     await page.getByRole('button', { name: /^すべてのブックマーク/ }).click(); await page.getByRole('searchbox').fill('Python'); await expect(page.locator('.card-grid .post-card')).toHaveCount(2);
     const nav = page.getByRole('navigation', { name: 'ローカルライブラリ', exact: true }); await expect(nav.getByRole('button').nth(3)).toHaveAccessibleName('自動マーク');
     await page.getByRole('button', { name: '自動マーク', exact: true }).click(); await expect(page.locator('.ai-target')).toContainText('現在の検索結果'); await expect(page.locator('.ai-target dd').last()).toHaveText('2');
+    await expect(page.getByRole('button', { name: '接続設定を開く', exact: true })).toHaveCount(0);
     holdDecisions = true; await page.getByRole('button', { name: '検索結果を自動マーク', exact: true }).click(); await expect.poll(() => heldResponses.length).toBe(1);
-    await page.getByRole('button', { name: '投稿一覧へ戻る', exact: true }).click(); await expect(page.locator('.card-grid .post-card')).toHaveCount(2); await expect(page.locator('main .ai-controls, main .ai-progress')).toHaveCount(0); await expect(nav.locator('.ai-nav-status')).toHaveText('処理中');
+    await page.getByRole('button', { name: /^すべてのブックマーク/ }).click(); await expect(page.locator('.card-grid .post-card')).toHaveCount(2); await expect(page.locator('main .ai-controls, main .ai-progress')).toHaveCount(0); await expect(nav.locator('.ai-nav-status')).toHaveText('処理中');
     await page.setViewportSize({ width: 390, height: 844 }); await expect(nav.locator('.ai-nav-status')).toBeVisible(); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await page.setViewportSize({ width: 1280, height: 720 });
     await page.getByRole('button', { name: '設定', exact: true }).click(); await expect(page.locator('.ai-connection')).toBeVisible(); await expect(page.locator('main .ai-controls')).toHaveCount(0);
     await page.getByRole('button', { name: '自動マーク', exact: true }).click(); heldResponses.shift()!(); await expect.poll(() => heldResponses.length).toBe(1); await expect(page.locator('.ai-progress')).toContainText('1 / 2');
@@ -117,8 +125,12 @@ test('local auto-mark page retains filtered scope and progress across navigation
     const downloading = page.waitForEvent('download'); await page.getByRole('button', { name: '保存', exact: true }).click(); const saved = JSON.parse(await readFile((await (await downloading).path())!, 'utf8'));
     expect(saved.libraries.bookmarks.posts.map((p: LocalPost) => p.tagIds)).toEqual([['old', 'code'], ['old'], ['old']]); expect(saved.libraries.likes).toMatchObject({ ...lib.libraries.likes });
     await page.getByRole('button', { name: '設定', exact: true }).click(); await page.getByLabel('言語', { exact: true }).selectOption('en'); await page.getByRole('button', { name: 'Auto-mark', exact: true }).click(); await expect(page.getByRole('heading', { name: 'Auto-mark', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open connection settings', exact: true })).toHaveCount(0);
     const englishDownload = page.waitForEvent('download'); await page.getByRole('button', { name: 'Save', exact: true }).click(); await englishDownload;
     await page.getByRole('button', { name: 'Dismiss notification', exact: true }).click(); await expect(page.locator('.local-notice')).toHaveCount(0); await expect(page.locator('.local-file-bar')).toContainText('Unsaved changes');
     await page.setViewportSize({ width: 390, height: 844 }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.getByRole('button', { name: 'Settings', exact: true }).click(); await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
+    await page.getByRole('button', { name: 'Auto-mark', exact: true }).click(); await expect(page.getByRole('button', { name: 'Open connection settings', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Auto-mark search results', exact: true })).toBeDisabled();
   } finally { holdDecisions = false; heldResponses.splice(0).forEach(send => send()); }
 });

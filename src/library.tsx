@@ -1,4 +1,4 @@
-import { ExtensionAiSettings, ExtensionAiControls, useAiJob } from './extension-ai';
+import { ExtensionAiSettings, ExtensionAiControls, useAiJob, useDecisionConnection } from './extension-ai';
 import { AiPage, aiText } from './ai-ui';
 import { LanguageProvider, useI18n } from './i18n';
 import { dateLocale, isLanguagePreference, type MessageKey, type UIMessage } from './messages';
@@ -184,7 +184,7 @@ function Library({ source, onSource }: { source: LibrarySource; onSource(source:
   const db = useLibraryDB();
   const likes = source === 'likes';
   const { language, preference, t: tr, message } = useI18n();
-  const aiJob = useAiJob(source);
+  const aiJob = useAiJob(source); const aiConfig = useDecisionConnection();
   const [view, setView] = useState<View>('all'); const [accounts, setAccounts] = useState<Account[]>([]); const [accountId, setAccountId] = useState('');
   const [query, setQuery] = useState(''); const [search, setSearch] = useState('');
   const [openedMedia, setOpenedMedia] = useState(0);
@@ -360,7 +360,7 @@ function Library({ source, onSource }: { source: LibrarySource; onSource(source:
           {total ? <PostFeed feed={feed} loading={tr("投稿を読み込んでいます…")}>{posts.map(post => <PostCard key={`${post.accountId}:${post.postId}:${restoreRevision}`} post={post} previews={previews} availableTags={meta.tags} revision={refresh} onChange={bump} onTag={filterTag} onOpen={openPost} selected={selected.has(selectionKey([post.accountId, post.postId]))} onSelect={selecting ? checked => selectPost(post, checked) : undefined}/>)}</PostFeed> : <section class="empty"><span class="empty-icon"><Icon name={meta.total ? 'search' : 'bookmark'}/></span><h2>{meta.total || search || tagId ? tr("一致する投稿がありません") : tr(likes ? "最初のいいねを取り込もう" : "最初のブックマークを取り込もう")}</h2><p>{meta.total || search || tagId ? tr("検索キーワードや絞り込み条件を変えてみてください。") : tr(likes ? "XのLikesを開き、拡張アイコンから取り込めます。\n保存した投稿は、オフラインでも読めます。" : "XのBookmarksを開き、拡張アイコンから取り込めます。\n保存した投稿は、オフラインでも読めます。")}</p>{!meta.total && <a class="button-link" href={importUrl} target="_blank" rel="noopener noreferrer">{tr(likes ? "Xのいいねを開く" : "Xのブックマークを開く")}<Icon name="external"/></a>}</section>}
         </>}
         {view === 'marks' && <MarkManager accounts={accounts} tags={meta.tags} selectedAccount={accountId} onChange={bump} onOpen={filterTag}/>}
-        {view === 'auto-mark' && <AiPage language={language} source={tr(likes ? 'いいね' : 'ブックマーク')} total={meta.total} note={aiText(language, 'accountScopeNote')} openList={() => navigate('all')} openSettings={() => navigate('settings')}
+        {view === 'auto-mark' && <AiPage language={language} source={tr(likes ? 'いいね' : 'ブックマーク')} total={meta.total} note={aiText(language, 'accountScopeNote')} connected={!!aiConfig} openSettings={() => navigate('settings')}
           scope={<select aria-label={tr('アカウント')} value={accountId} disabled={aiJob?.state === 'running'} onChange={e => setAccountId(e.currentTarget.value)}><option value="">{tr('すべてのアカウント')}</option>{accounts.map(a => <option key={a.id} value={a.id}>@{a.handle}</option>)}</select>}>
           <ExtensionAiControls source={source} accountId={accountId} disabled={!meta.total || loadedKey !== listKey || run?.state === 'running'}/>
         </AiPage>}

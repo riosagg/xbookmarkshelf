@@ -208,7 +208,7 @@ function App() {
       </section> : <>
         {section === 'marks' && <LocalMarkManager key={source} lib={lib} source={source} selectedAccount={filters.account} tr={tr} symbolLabel={s => localSymbolText(s, language)} disabled={busy} change={mutate} open={chooseTag}/>}
         {section === 'auto-mark' && <><div class="page-heading"><div><h1>{aiText(language, 'page')}</h1></div></div>
-          <AiPage language={language} source={tr(source)} scope={aiText(language, 'searchScope')} total={results.length} note={aiText(language, 'searchScopeNote')} openList={() => setSection('posts')} openSettings={() => setSection('settings')}>
+          <AiPage language={language} source={tr(source)} scope={aiText(language, 'searchScope')} total={results.length} note={aiText(language, 'searchScopeNote')} connected={!!aiConfig} openSettings={() => setSection('settings')}>
             <AiControls language={language} config={aiConfig} progress={aiProgress} disabled={busy || !results.length} label="local" start={() => void autoMarkPosts()} stop={() => aiAbort.current?.abort()}/>
             <p class="small muted">{tr('saveNote')}</p>
           </AiPage></>}
