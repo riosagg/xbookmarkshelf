@@ -93,6 +93,7 @@ test('20-post image import continues after popup closes and reports completion o
     await expect.poll(async () => env.worker.evaluate(async () => { const d = await new Promise<IDBDatabase>(done => { const r = indexedDB.open('x-bookmark-library'); r.onsuccess = () => done(r.result); }); const v = await new Promise<any>(done => { const r = d.transaction('settings').objectStore('settings').get('decisionJob'); r.onsuccess = () => done(r.result?.value); }); d.close(); return v?.state === 'completed' ? v?.marked : 0; }), { timeout: 30000 }).toBe(20);
     expect(importImageCounts).toEqual(Array(20).fill(1));
     const resultPopup = await env.context.newPage(); await source.bringToFront(); await resultPopup.goto(`chrome-extension://${env.id}/popup.html`);
+    await expect(resultPopup.getByLabel('取り込み中に自動マークを付ける', { exact: true })).toBeChecked();
     await expect(resultPopup.locator('.ai-import-status .ai-progress')).toContainText('自動マーク完了'); await expect(resultPopup.locator('.ai-import-status')).toContainText('20 / 20');
     await expect(resultPopup.getByRole('button', { name: '今回取り込んだ投稿を自動マーク', exact: true })).toHaveCount(0);
     await env.page.getByRole('button', { name: '取り込み', exact: true }).click(); await expect(env.page.locator('.ai-import-status')).toContainText('20 / 20');
@@ -106,7 +107,12 @@ test('20-post image import continues after popup closes and reports completion o
     await expect(resultPopup.getByRole('button', { name: '今回取り込んだ投稿を自動マーク', exact: true })).toHaveCount(0);
     const codeCount = await env.worker.evaluate(async () => { const d = await new Promise<IDBDatabase>(done => { const r = indexedDB.open('x-bookmark-library'); r.onsuccess = () => done(r.result); }); const rows = await new Promise<any[]>(done => { const r = d.transaction('postTags').objectStore('postTags').getAll(); r.onsuccess = () => done(r.result); }); d.close(); return rows.filter(r => r.tagId === 'code').length; });
     expect(codeCount).toBe(20);
-    await resultPopup.setViewportSize({ width: 390, height: 844 }); expect(await resultPopup.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await resultPopup.getByLabel('取り込み中に自動マークを付ける', { exact: true }).uncheck();
+    await expect.poll(() => resultPopup.evaluate(async () => { const d = await new Promise<IDBDatabase>(done => { const r = indexedDB.open('x-bookmark-library'); r.onsuccess = () => done(r.result); }); const value = await new Promise<any>(done => { const r = d.transaction('settings').objectStore('settings').get('importPreferences'); r.onsuccess = () => done(r.result?.value); }); d.close(); return value?.autoMark; })).toBe(false);
+    const requestCount = importImageCounts.length; await resultPopup.close(); await source.bringToFront();
+    const offPopup = await env.context.newPage(); await source.bringToFront(); await offPopup.goto(`chrome-extension://${env.id}/popup.html`);
+    await expect(offPopup.getByLabel('取り込み中に自動マークを付ける', { exact: true })).not.toBeChecked(); expect(importImageCounts).toHaveLength(requestCount);
+    await offPopup.setViewportSize({ width: 390, height: 844 }); expect(await offPopup.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   } finally { failDecisions = false; await env.close(); }
 });
 test('file app connects through CORS, sends image bytes and saves additive marks in JSON', async ({ page }) => {
