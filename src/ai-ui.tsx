@@ -5,7 +5,7 @@ import { DEFAULT_DECISION, type DecisionConfig, type AiProgress } from './decisi
 const labels = {
   title: ['ローカルAIで自動マーク', 'Auto-mark with local AI'], url: ['LM StudioのURL', 'LM Studio URL'], model: ['モデルID', 'Model ID'], threshold: ['マークを付ける基準（%）', 'Match threshold (%)'],
   page: ['自動マーク', 'Auto-mark'], active: ['処理中', 'Running'], target: ['対象の投稿', 'Target posts'], library: ['ライブラリ', 'Library'], scope: ['対象範囲', 'Scope'], count: ['対象の件数', 'Post count'],
-  searchScope: ['現在の検索結果', 'Current search results'], searchScopeNote: ['一覧の検索・絞り込み条件に一致する投稿を判定します。対象を変える場合は、一覧で条件を調整してください。', 'Matches posts using the search and filters from your list. Return to the list to adjust the target.'],
+  searchScope: ['現在の検索結果', 'Current search results'], searchScopeNote: ['投稿一覧の検索・フィルタで絞り込んだ投稿が対象です。条件を指定していない場合は、選択中のライブラリの全投稿を判定します。', 'Uses all posts matching the search and filters in the post list. Without search or filters, every post in the selected library is included.'],
   accountScopeNote: ['選択したアカウントの保存済み投稿をすべて判定します。', 'Matches all saved posts in the selected account scope.'],
   openSettings: ['接続設定を開く', 'Open connection settings'],
   connection: ['接続先', 'Connection'], criteria: ['判定条件', 'Matching options'],
