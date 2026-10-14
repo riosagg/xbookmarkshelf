@@ -143,7 +143,7 @@ if (process.argv[2] === '--assets') {
   const manifest = JSON.parse(await readFile('public/manifest.json', 'utf8'));
   check(JSON.stringify(manifest) === JSON.stringify(JSON.parse(await readFile('dist/manifest.json', 'utf8'))), 'Rebuild the extension first');
   check(manifest.manifest_version === 3 && manifest.version === '0.1.0' && manifest.default_locale === 'en', 'Unexpected manifest metadata');
-  check(manifest.permissions.join(',') === 'activeTab,scripting' && !manifest.host_permissions && !manifest.optional_permissions, 'Review permission changes first');
+  check(manifest.permissions.join(',') === 'activeTab,scripting,alarms' && !manifest.host_permissions && !manifest.optional_permissions && JSON.stringify(manifest.optional_host_permissions) === JSON.stringify(['http://127.0.0.1/*', 'http://localhost/*', 'https://pbs.twimg.com/*']), 'Review permission changes first');
   for (const [size, name] of Object.entries(manifest.icons)) {
     const source = await readFile(`public/${name}`), built = await readFile(`dist/${name}`);
     check(source.equals(built) && pngSize(built).every(value => value === Number(size)), `Invalid icon: ${name}`);
@@ -278,6 +278,10 @@ Provides temporary access to the X tab after the user clicks the extension icon.
 
 拡張アイコンを押したときだけXのタブへアクセスし、ブックマーク／いいねの一覧と対象アカウントを確認して、表示された投稿をローカルライブラリへ取り込みます。他のサイトや無関係なタブは読み取りません。
 
+### alarms and optional host access justification
+
+Alarms resume user-started classification jobs; no inference runs without an active job. Optional host access is requested only when connecting to localhost/127.0.0.1 and, if selected, fetching pbs.twimg.com images for local inference. No cloud AI endpoint is supported.
+
 ### scripting justification
 
 Injects the packaged content.js into the user-selected X tab to read displayed post text, authors, dates, links, and image URLs. The script scrolls the selected list in small steps while the user-initiated import is running. All executable code is bundled with the extension.
@@ -288,7 +292,7 @@ Injects the packaged content.js into the user-selected X tab to read displayed p
 
 No, I am not using remote code.
 
-All JavaScript and UI code is packaged in the extension. Images from https://pbs.twimg.com are previews, not executable code. No remote scripts, eval, AI API, or external code loader is used.
+All JavaScript and UI code is packaged in the extension. Images from https://pbs.twimg.com are previews, not executable code. No remote scripts, eval, or external code loader is used. Optional AI classification sends typed requests to a user-configured localhost LM Studio Decision API. Responses are validated data, never executable code.
 
 ### Data usage
 

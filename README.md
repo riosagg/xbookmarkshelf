@@ -43,6 +43,21 @@ Click "Open library", then use the switch below the logo to choose Bookmarks or 
 - Sort by save order or by newest or oldest posting date. Posts with unknown dates appear last when sorting by posting date.
 - Use continuous scrolling, card or list view, 1–5 columns, light or dark themes, and Japanese or English. The default language follows your browser's language.
 
+## Auto-mark with LM Studio
+
+This optional feature requires a local LM Studio server with an image-capable decision model such as d1-3B loaded. Basic browsing and manual marks work without it.
+
+1. In Settings, enter the server URL and model ID (defaults: `http://127.0.0.1:1234` and `d1-3b`), choose the minimum match probability, and click "Connect and save". The extension requests access to the local server and, if selected, X images. The local HTML requires **Enable CORS** in LM Studio Server Settings.
+2. Create marks with names that describe their categories. The default threshold is 80%; every matching mark is added. No match leaves the post unchanged, and existing marks are retained.
+3. In the extension popup, enable "Auto-mark during import", or use "Auto-mark this import" after importing. The library also has "Auto-mark this account scope". Importing continues while classification runs separately; closing the popup does not stop classification.
+4. In the local app, use "Auto-mark search results", then "Save" to write the changes to your library JSON. Connection settings remain in memory for this session.
+
+"Include images for AI" is separate from display previews. It loads up to four saved image references, including quoted images or video covers, from `pbs.twimg.com` and sends temporary JPEG previews to the local server. Like.js entries without images use text only. If the browser cannot fetch an image, that post is reported as failed; turn off AI images to retry with text only. Images are not saved in backups.
+
+Classification uses the mark names as category descriptions. Match probabilities can be wrong; choose a threshold that works for your categories. Stop controls retain completed additions. The extension records classification progress and retries pending work after worker suspension. Deleted posts or changes made during inference are skipped. The server URL is limited to HTTP localhost or 127.0.0.1; API tokens and cloud connections are not supported.
+
+Auto-marking stops after three consecutive classification failures. Completed additions remain; check the settings and start again to retry.
+
 ## Images, videos, and link cards
 
 Image previews are on by default in the extension. The local library starts with previews off and remembers your choice. When enabled, images load from their saved URLs. In both versions, click a photo to enlarge it and use the arrows to browse multiple images. Videos show a cover image and a link to the original post. The extension also saves link cards and quoted posts displayed on X.

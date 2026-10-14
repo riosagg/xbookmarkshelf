@@ -2,6 +2,10 @@
 
 English | [日本語](CHANGELOG.ja.md)
 
+## Unreleased
+
+- Add optional LM Studio/d1 auto-marking during extension imports, from post-import/account buttons, and from local search results. Preserve existing marks and leave unmatched posts unchanged.
+
 ## v0.1.0
 
 - Chrome extension and a standalone local library app that stores posts in JSON files.

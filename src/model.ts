@@ -61,6 +61,7 @@ export interface ImportRun extends ImportOptions {
   nextSequence: number;
   lastFingerprint: string;
   lastPostId: string | null;
+  importedPostIds?: string[]; // Exact committed membership for post-import classification.
 }
 export const BATCH_SIZE = 10;
 export const DEFAULT_OPTIONS: ImportOptions = { intervalMs: 3000, maxPosts: 100, mode: 'full' };

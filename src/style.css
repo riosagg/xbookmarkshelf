@@ -368,3 +368,10 @@ button.media-frame { cursor: zoom-in; }
 .backup-parts { min-width: 0; }
 .backup-parts ul { padding-left: 0; list-style: none; display: grid; gap: 8px; }
 .backup-parts button { max-width: 100%; overflow-wrap: anywhere; text-align: left; }
+
+/* Local decision controls share the extension and file-app layout. */
+.ai-controls { margin: 12px 0; min-width: 0; }
+.ai-controls .actions { flex-wrap: wrap; }
+.ai-progress, .ai-connection { overflow-wrap: anywhere; }
+.ai-settings form { display: grid; gap: 12px; min-width: 0; }
+.ai-settings input { min-width: 0; max-width: 100%; }
