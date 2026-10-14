@@ -6,11 +6,13 @@ English | [日本語](README.ja.md)
 
 A viewer for organizing and reading your X bookmarks and likes. Create marks with your own names and icons to group posts by topic, then search and filter your library. Available as a Chrome extension and a standalone local library app that opens JSON files on your computer.
 
-Version 0.1.0 is designed for Chrome on Windows.
+Version 0.1.1 is designed for Chrome on Windows.
 
 ## Install the Chrome extension
 
 The packaged extension requires Chrome 120 or later. You do not need Node.js, npm, or a server to use it.
+
+If you installed the Chrome Web Store version, Chrome handles its updates. For the ZIP distributed through GitHub Releases, use the steps below.
 
 1. Extract the extension ZIP.
 2. Open `chrome://extensions` in Chrome and enable Developer mode.
@@ -42,6 +44,21 @@ Click "Open library", then use the switch below the logo to choose Bookmarks or 
 - Opening a post marks it as read and removes it from "Read later". "Unmarked" shows posts without a mark.
 - Sort by save order or by newest or oldest posting date. Posts with unknown dates appear last when sorting by posting date.
 - Use continuous scrolling, card or list view, 1–5 columns, light or dark themes, and Japanese or English. The default language follows your browser's language.
+
+## Auto-mark with LM Studio
+
+This optional feature requires a local LM Studio server with an image-capable decision model such as d1-3B loaded. Basic browsing and manual marks work without it.
+
+1. Under "Auto-mark with local AI" at the bottom of Settings, enter the server URL and model ID (defaults: `http://127.0.0.1:1234` and `d1-3b`) and choose the match threshold. Click "Connect and save" in the extension or "Connect and apply" in the local app. The extension requests access to the local server and, if selected, X images. The local HTML requires **Enable CORS** in LM Studio Server Settings.
+2. Create marks with names that describe their categories. The default threshold is 80%; every matching mark is added. No match leaves the post unchanged, and existing marks are retained.
+3. In the extension popup, enable "Auto-mark during import" before starting. Your on/off choice is remembered when the popup closes, alongside the other import preferences. Without saved AI connection settings the checkbox is disabled and imports do not send anything to AI; reconnecting restores the remembered choice. Opening the popup never starts an import or classification. The popup and import page show progress, results, and failure messages for that import, with a Stop control while classification is running. They do not show a separate classification or retry button. To classify saved posts manually, open "Auto-mark" below "Unmarked" in the sidebar, check the account scope and post count, then click "Auto-mark this account scope". Importing continues while classification runs separately; closing the popup does not stop classification.
+4. In the local app, search and filter your list, then open "Auto-mark" and check the target count before clicking "Auto-mark search results". Matching continues when you change pages, with a running indicator in the sidebar. Click "Save" to write the changes to your library JSON. Closing or reloading the HTML resets the AI connection settings; connect again the next time you open it.
+
+"Use images for matching" allows AI to use images even when display previews are off. It loads up to four saved image references per post, including quoted images or video covers, from X’s image server (`pbs.twimg.com`) and sends temporary JPEG previews to LM Studio. Like.js entries without images use text only. If the browser cannot fetch an image, that post is reported as failed; turn off AI images to retry with text only. Images are not saved in backups.
+
+Classification uses the mark names as category descriptions. Match probabilities can be wrong; choose a threshold that works for your categories. Stop controls retain completed additions. The extension records classification progress and retries pending work after worker suspension. Deleted posts or changes made during inference are skipped. The server URL is limited to HTTP localhost or 127.0.0.1; API tokens and cloud connections are not supported.
+
+Auto-marking stops after three consecutive classification failures. Completed additions remain; check the settings and start again to retry.
 
 ## Images, videos, and link cards
 

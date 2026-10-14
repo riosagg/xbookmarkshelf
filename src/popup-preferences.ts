@@ -9,6 +9,7 @@ export interface PopupPreferences {
   intervalMaxMs: number;
   maxPosts: number;
   mode: ImportOptions['mode'];
+  autoMark: boolean;
 }
 export function initialPopupSource(explicit: unknown, inspected: unknown, saved: unknown): LibrarySource {
   if (isLibrarySource(inspected)) return inspected;
@@ -22,14 +23,15 @@ export function validatePopupPreferences(input: unknown): PopupPreferences | und
   if (!input || typeof input !== 'object' || Array.isArray(input)) return;
   const value = input as PopupPreferences;
   if (!isLibrarySource(value.source) || (value.waitMode !== 'fixed' && value.waitMode !== 'random') ||
-    !Number.isInteger(value.intervalMaxMs) || value.intervalMaxMs < 3000 || value.intervalMaxMs > 30000) return;
+    !Number.isInteger(value.intervalMaxMs) || value.intervalMaxMs < 3000 || value.intervalMaxMs > 30000 ||
+    (value.autoMark !== undefined && typeof value.autoMark !== 'boolean')) return;
   try {
     const options = popupOptions(value);
-    return { source: value.source, waitMode: value.waitMode, ...options, intervalMaxMs: value.intervalMaxMs };
+    return { source: value.source, waitMode: value.waitMode, ...options, intervalMaxMs: value.intervalMaxMs, autoMark: value.autoMark ?? false };
   } catch { return; }
 }
-export function preferencesFromOptions(source: LibrarySource, options: ImportOptions): PopupPreferences {
-  return { source, intervalMs: options.intervalMs, maxPosts: options.maxPosts, mode: options.mode, waitMode: options.intervalMaxMs === undefined ? 'fixed' : 'random', intervalMaxMs: options.intervalMaxMs ?? Math.max(options.intervalMs, 6000) };
+export function preferencesFromOptions(source: LibrarySource, options: ImportOptions, autoMark = false): PopupPreferences {
+  return { source, intervalMs: options.intervalMs, maxPosts: options.maxPosts, mode: options.mode, waitMode: options.intervalMaxMs === undefined ? 'fixed' : 'random', intervalMaxMs: options.intervalMaxMs ?? Math.max(options.intervalMs, 6000), autoMark };
 }
 export async function loadPopupPreferences(store: LibraryDB = db): Promise<PopupPreferences | undefined> {
   return validatePopupPreferences((await store.settings.get(IMPORT_PREFERENCES_KEY))?.value);

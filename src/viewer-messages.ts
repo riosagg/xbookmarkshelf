@@ -7,7 +7,7 @@ export const viewerMessages = {
   memory: ['開いている間はメモリを使います。20MiB・50,000件まで、表示は50件ずつ。', 'Uses memory while open. Up to 20 MiB and 50,000 posts, displayed 50 at a time.'],
   readonly: ['閲覧専用 · 元ファイルは変更しません', 'Read only · Your file stays unchanged'],
   all: ['すべての投稿', 'All posts'], unread: ['あとで読む', 'Read later'], unmarked: ['マークなし', 'Unmarked'], marks: ['マーク', 'Marks'],
-  search: ['本文・投稿者・URLを検索', 'Search text, author or URL'], filters: ['絞り込み', 'Filters'], reset: ['条件をリセット', 'Reset filters'],
+  search: ['本文・投稿者・URLを検索', 'Search text, author or URL'], filters: ['フィルタ', 'Filters'], reset: ['条件をリセット', 'Reset filters'],
   author: ['投稿者', 'Author'], account: ['アカウント', 'Account'], tag: ['マーク・タグ', 'Mark or tag'],
   media: ['メディア', 'Media'], links: ['本文URL', 'Text links'], read: ['既読', 'Read state'], any: ['すべて', 'All'],
   with: ['あり', 'With'], without: ['なし', 'Without'], image: ['画像', 'Images'], video: ['動画', 'Videos'], marked: ['マークあり', 'Marked'],

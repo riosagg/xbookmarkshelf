@@ -72,6 +72,8 @@ export async function commitBatch(id: string, sequence: number, input: unknown, 
       await store.posts.put(merged);
       await store.media.where('[accountId+postId]').equals(key).delete();
       if (merged.media.length) await store.media.bulkPut(merged.media.map((m, index) => ({ ...m, accountId: run.accountId, postId: p.postId, index })));
+      run.importedPostIds ??= [];
+      if (!run.importedPostIds.includes(p.postId)) run.importedPostIds.push(p.postId);
       run.observed++; run.lastPostId = p.postId;
       if (old) { run.existing++; run.consecutiveKnown++; } else { run.added++; run.consecutiveKnown = 0; }
       if (run.mode === 'delta' && run.consecutiveKnown >= 30) { run.state = 'stopped'; run.reason = 'known_threshold'; break; }

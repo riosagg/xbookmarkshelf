@@ -141,9 +141,10 @@ if (process.argv[2] === '--assets') {
 } else {
   check(process.argv.length === 2, 'Use prepare-store.mjs with no arguments or --assets');
   const manifest = JSON.parse(await readFile('public/manifest.json', 'utf8'));
+  const packageInfo = JSON.parse(await readFile('package.json', 'utf8'));
   check(JSON.stringify(manifest) === JSON.stringify(JSON.parse(await readFile('dist/manifest.json', 'utf8'))), 'Rebuild the extension first');
-  check(manifest.manifest_version === 3 && manifest.version === '0.1.0' && manifest.default_locale === 'en', 'Unexpected manifest metadata');
-  check(manifest.permissions.join(',') === 'activeTab,scripting' && !manifest.host_permissions && !manifest.optional_permissions, 'Review permission changes first');
+  check(manifest.manifest_version === 3 && manifest.version === packageInfo.version && manifest.default_locale === 'en', 'Unexpected manifest metadata');
+  check(manifest.permissions.join(',') === 'activeTab,scripting,alarms' && !manifest.host_permissions && !manifest.optional_permissions && JSON.stringify(manifest.optional_host_permissions) === JSON.stringify(['http://127.0.0.1/*', 'http://localhost/*', 'https://pbs.twimg.com/*']), 'Review permission changes first');
   for (const [size, name] of Object.entries(manifest.icons)) {
     const source = await readFile(`public/${name}`), built = await readFile(`dist/${name}`);
     check(source.equals(built) && pngSize(built).every(value => value === Number(size)), `Invalid icon: ${name}`);
@@ -183,17 +184,17 @@ if (process.argv[2] === '--assets') {
   await writeFile(`${output}/review/likes.json`, JSON.stringify({ ...sample, format: 'xbookmarkshelf-likes', formatVersion: 1 }, null, 2) + '\n');
   await writeFile(`${output}/privacy/index.html`, privacyHtml(await readFile('PRIVACY.md', 'utf8'), 'en'));
   await writeFile(`${output}/privacy/ja.html`, privacyHtml(await readFile('PRIVACY.ja.md', 'utf8'), 'ja'));
-  await writeFile(`${output}/SUBMISSION.md`, submissionGuide(descriptions, archiveName));
+  await writeFile(`${output}/SUBMISSION.md`, submissionGuide(descriptions, archiveName, manifest.version));
   const checksums = [];
   for (const name of await filesIn(output)) if (!name.endsWith('SHA256SUMS.txt')) checksums.push(`${digest(await readFile(name))}  ${relative(output, name).replaceAll('\\', '/')}`);
   await writeFile(`${output}/SHA256SUMS.txt`, checksums.join('\n') + '\n');
   console.log(`Store submission files prepared in ${output}; EN/JA description lengths ${descriptions.en.length}/${descriptions.ja.length}.`);
 }
 
-function submissionGuide(descriptions, archiveName) {
+function submissionGuide(descriptions, archiveName, version) {
   return `# xbookmarkshelf · Chrome Web Store submission
 
-Version: 0.1.0
+Version: ${version}
 Publisher name: riosagg
 Category: Productivity / Tools（ダッシュボードに表示される分類から選択）
 Primary language: English。日本語の掲載文も用意済み。
@@ -230,10 +231,13 @@ xbookmarkshelf is a viewer for organizing and reading your X bookmarks and likes
 - Sort by save order or posting date and browse with continuous scrolling.
 - Back up all posts or one mark as JSON. Export display settings separately.
 - Delete selected posts or clear the current library.
+- Optionally connect to LM Studio on this computer to add matching marks during import or from the dedicated Auto-mark page. Existing marks are retained.
 
 To import, sign in to X, open Bookmarks or Likes, and click the extension icon. The extension reads the content displayed on that page and saves it in small batches. You can set a fixed wait or a random wait within a chosen range. Repeated imports avoid duplicates.
 
 Posts and settings are stored in your Chrome profile. Saved post text can be read offline. Image previews load from X's image server and can be turned off. Videos show a cover image and a link to the original post; image and video files are not downloaded for offline storage.
+
+Local AI requires your own LM Studio server and an image-capable decision model such as d1-3B. When you enable classification, target post text and mark names are sent to that local server. If AI images are selected, up to four image previews per post are loaded from pbs.twimg.com and sent to the same server. AI images are a separate choice from display previews. Only localhost/127.0.0.1 connections are supported; the extension does not use a cloud AI service. Basic browsing and manual marks work without LM Studio.
 
 There are no ads, analytics, cloud sync, or developer access to your saved posts. X page changes can affect importing, and complete imports are not guaranteed. Use the DOM import feature at your own risk. This is an independent project and is not affiliated with or endorsed by X.
 
@@ -257,10 +261,13 @@ xbookmarkshelfは、Xのブックマークやいいねを整理して読むた�
 - 保存順や投稿日順での並べ替えと連続スクロール。
 - 投稿全体やマークごとのJSONバックアップ。表示設定は別に書き出せます。
 - 選択した投稿の削除と、選択中のライブラリの全削除。
+- この端末のLM Studioへ任意接続し、取り込み中や専用の「自動マーク」ページからマークを追加。既存マークは保持します。
 
 取り込みは、Xへログインしてブックマークかいいねの一覧を開き、拡張アイコンから始めます。画面に表示された内容を少量ずつ読み取り、Chrome内に保存します。待機時間は固定、または指定した最短〜最長の間でランダムに設定できます。再取り込みでは重複を除きます。
 
 投稿と設定の保存先は利用中のChromeです。保存した本文はオフラインでも読めます。画像プレビューはXの画像サーバーから読み込み、設定でオフにできます。動画は表紙と元投稿へのリンクを表示します。画像や動画の本体をダウンロードして保管する機能はありません。
+
+ローカルAI分類には、利用者が起動するLM Studioと、d1-3Bなどの画像対応decision modelが必要です。分類を有効にすると対象投稿の本文とマーク名をローカルサーバーへ送ります。AI画像利用を選んだ場合は、pbs.twimg.comから1投稿につき最大4枚の画像プレビューを読み、同じサーバーへ送ります。画像の判定利用は画面のプレビュー設定とは別の選択です。接続先はlocalhost/127.0.0.1に限定し、クラウドAIには接続しません。通常の閲覧・手動マークにはLM Studioは不要です。
 
 広告、アクセス解析、クラウド同期はなく、開発者が保存した投稿を読む仕組みもありません。Xの画面構造が変わると取り込めなくなる場合があり、全件取得は保証しません。DOMを読む取り込み機能の利用は自己責任でお願いします。Xとは関係のない独立したプロジェクトです。
 
@@ -278,6 +285,10 @@ Provides temporary access to the X tab after the user clicks the extension icon.
 
 拡張アイコンを押したときだけXのタブへアクセスし、ブックマーク／いいねの一覧と対象アカウントを確認して、表示された投稿をローカルライブラリへ取り込みます。他のサイトや無関係なタブは読み取りません。
 
+### alarms and optional host access justification
+
+Alarms resume user-started classification jobs; no inference runs without an active job. Optional host access is requested only when connecting to localhost/127.0.0.1 and, if selected, fetching pbs.twimg.com images for local inference. No cloud AI endpoint is supported.
+
 ### scripting justification
 
 Injects the packaged content.js into the user-selected X tab to read displayed post text, authors, dates, links, and image URLs. The script scrolls the selected list in small steps while the user-initiated import is running. All executable code is bundled with the extension.
@@ -288,7 +299,7 @@ Injects the packaged content.js into the user-selected X tab to read displayed p
 
 No, I am not using remote code.
 
-All JavaScript and UI code is packaged in the extension. Images from https://pbs.twimg.com are previews, not executable code. No remote scripts, eval, AI API, or external code loader is used.
+All JavaScript and UI code is packaged in the extension. Images from https://pbs.twimg.com are previews, not executable code. No remote scripts, eval, or external code loader is used. Optional AI classification sends typed requests to a user-configured localhost LM Studio Decision API. Responses are validated data, never executable code.
 
 ### Data usage
 

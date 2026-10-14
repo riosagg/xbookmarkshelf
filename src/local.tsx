@@ -1,3 +1,6 @@
+import { AiSettings, AiControls, AiPage, aiText } from './ai-ui';
+import { connectDecision, type DecisionConfig, type AiProgress } from './decision';
+import { runLocalAutoMarks } from './local-auto-marks';
 import { render } from 'preact';
 import { isPostDateOrder } from './post-order';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -18,12 +21,14 @@ import type { LocalImport } from './local-data';
 import type { ViewerLanguage } from './viewer-messages';
 import { PostFeed, usePostFeed } from './post-feed';
 
-type PageName = 'posts' | 'marks' | 'backup' | 'settings';
+type PageName = 'posts' | 'marks' | 'auto-mark' | 'backup' | 'settings';
 const systemLanguage = (): ViewerLanguage => /^ja(?:[-_]|$)/i.test(navigator.language) ? 'ja' : 'en';
 const cancelled = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
 function App() {
   const [fileRevision, setFileRevision] = useState(0);
   const [lib, setLib] = useState<LocalLibrary | null>(null); const library = useRef<LocalLibrary | null>(null); const target = useRef<LocalFileTarget | null>(null);
+  const [aiConfig, setAiConfig] = useState<DecisionConfig | null>(null); const [aiProgress, setAiProgress] = useState<AiProgress | null>(null); const aiAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => aiAbort.current?.abort(), []);
   const [source, setSource] = useState<LocalSource>('bookmarks'); const [section, setSection] = useState<PageName>('posts');
   const [dirty, setDirty] = useState(false); const dirtyRef = useRef(false); const [busy, setBusy] = useState(false); const busyRef = useRef(false);
   const [filename, setFilename] = useState(''); const [bytes, setBytes] = useState<number | null>(null);
@@ -75,7 +80,7 @@ function App() {
   function update(patch: Partial<ViewerFilters>) { setFilters(old => ({ ...old, ...patch })); }
   function reset() { setQuery(''); setAuthor(''); setFrom(''); setTo(''); setFilters({ ...EMPTY_VIEWER_FILTERS }); }
   function chooseTag(id: string) { setDetailKey(null); setSection('posts'); update({ tag: id, read: '' }); }
-  function switchSource(s: LocalSource) { setSource(s); setSection('posts'); setDetailKey(null); setScope('current'); reset(); }
+  function switchSource(s: LocalSource) { setAiProgress(null); setSource(s); setSection('posts'); setDetailKey(null); setScope('current'); reset(); }
   function allowReplace() { return !dirtyRef.current || window.confirm(tr('discard')); }
   async function remember(handle: LocalFileHandle | null) {
     try { await rememberLocalFile(handle); setRemembered(handle); }
@@ -86,7 +91,7 @@ function App() {
     void rememberLocalPreviews(value).catch(() => setMemoryError(true));
   }
   function install(next: LocalLibrary, name = '', size: number | null = null, fileTarget: LocalFileTarget | null = null) {
-    setFileRevision(n => n + 1);
+    setAiProgress(null); setFileRevision(n => n + 1);
     library.current = next; setLib(next); target.current = fileTarget; setFilename(name); setBytes(size); markDirty(false); reset(); setDetailKey(null); setSection('posts'); setScope('current');
     setSource(next.libraries.bookmarks.posts.length || !next.libraries.likes.posts.length ? 'bookmarks' : 'likes'); setError(null); setNotice('');
   }
@@ -162,6 +167,13 @@ function App() {
   const marks = orderedMarks(collection?.tags ?? []); const sidebarMarks = marks.filter(t => !filters.account || t.accountId === filters.account);
   const tagLabel = (id: string) => { const t = collection?.tags.find(t => t.id === id); const a = collection?.accounts.find(a => a.id === t?.accountId);
     return t ? `${t.name}${(collection?.accounts.length ?? 0) > 1 ? ` · @${a?.handle}` : ''}` : tr('all'); };
+  async function autoMarkPosts() {
+    if (!aiConfig || busyRef.current || !library.current) return;
+    const controller = new AbortController(); aiAbort.current = controller; setWorking(true);
+    try { await runLocalAutoMarks(source, results.map(p => p.key), aiConfig, controller.signal, () => library.current, commit, setAiProgress); }
+    catch { setAiProgress(old => old ? { ...old, state: 'cancelled', failed: old.failed + 1 } : null); }
+    finally { aiAbort.current = null; setWorking(false); }
+  }
   function openPost(p: ViewerPost, mediaIndex = 0) { if (busyRef.current || !library.current) return; if (!p.read) mutate(() => setLocalRead(library.current!, source, p.key, true)); setDetailMediaIndex(mediaIndex); setDetailKey(p.key); }
   const actions = (p: ViewerPost) => <LocalQuickMarks marks={marks.filter(t => t.accountId === p.accountId)} post={p} tr={tr} disabled={busy} toggle={id => mutate(() => toggleLocalMark(library.current!, source, p.key, id))}/>;
   const readAction = (p: ViewerPost) => <button class="text-button local-read" aria-label={tr(p.read ? 'makeUnread' : 'makeRead')} disabled={busy} onClick={() => mutate(() => setLocalRead(library.current!, source, p.key, !p.read))}><Icon name={p.read ? 'check' : 'unread'}/>{tr(p.read ? 'readYes' : 'readNo')}</button>;
@@ -173,6 +185,7 @@ function App() {
       <nav class="side-nav" aria-label={tr('localTitle')}><button class={`nav-item ${section === 'posts' && !filters.tag && !filters.read ? 'active' : ''}`} onClick={() => { setSection('posts'); update({ tag: '', read: '' }); }}><Icon name="bookmark"/><span class="nav-text">{tr(source === 'bookmarks' ? 'allBookmarks' : 'allLikes')}</span><span class="nav-count">{data?.posts.length.toLocaleString(locale) ?? 0}</span></button>
         <button class={`nav-item ${section === 'posts' && filters.read === 'unread' ? 'active' : ''}`} onClick={() => { setSection('posts'); update({ tag: '', read: 'unread' }); }}><Icon name="unread"/><span class="nav-text">{tr('unread')}</span><span class="nav-count">{metadata.unread}</span></button>
         <button class={`nav-item ${section === 'posts' && filters.tag === ':without' ? 'active' : ''}`} onClick={() => chooseTag(':without')}><Icon name="tag"/><span class="nav-text">{tr('unmarked')}</span><span class="nav-count">{metadata.unmarked}</span></button>
+        <button class={`nav-item ${section === 'auto-mark' ? 'active' : ''}`} aria-label={aiText(language, 'page')} aria-current={section === 'auto-mark' ? 'page' : undefined} disabled={!lib} onClick={() => setSection('auto-mark')}><Icon name="bolt"/><span class="nav-text">{aiText(language, 'page')}</span>{aiProgress?.state === 'running' && <span class="nav-count ai-nav-status" role="status">{aiText(language, 'active')}</span>}</button>
       </nav>
       <nav class="side-tags side-marks" aria-label={tr('marks')}><button class={`mark-section-heading ${section === 'marks' ? 'active' : ''}`} aria-label={tr('manageMarks')} onClick={() => setSection('marks')}><span>{tr('marks')}</span><span class="mark-section-add"><Icon name="plus"/></span></button>
         {sidebarMarks.map(t => <button key={t.id} class={`nav-item ${section === 'posts' && filters.tag === t.id ? 'active' : ''}`} title={tagLabel(t.id)} onClick={() => chooseTag(t.id)}><Icon name={t.mark!}/><span class="nav-text">{tagLabel(t.id)}</span><span class="nav-count">{metadata.counts.get(t.id) ?? 0}</span></button>)}
@@ -187,33 +200,38 @@ function App() {
       <input ref={importInput} hidden type="file" multiple accept=".json,.js,application/json,text/javascript" aria-label={tr('import')} onChange={e => void importFiles(Array.from(e.currentTarget.files ?? []))}/>
       <input ref={openInput} hidden type="file" accept=".json,application/json" aria-label={tr('openLibrary')} onChange={e => void openFallback(e.currentTarget.files?.[0])}/>
       {lib && <div class="local-file-bar"><span class="viewer-filename" title={filename}>{filename || tr('newFile')}</span><span class={dirty ? 'local-dirty' : 'muted'} role="status">{tr(dirty ? 'unsaved' : 'saved')}</span><div class="actions"><button class="small-button" disabled={busy} onClick={() => void create()}>{tr('new')}</button><button class="small-button" disabled={busy} onClick={() => void openLibrary()}>{tr('openLibrary')}</button><button class="small-button" disabled={busy} onClick={() => void save(true)}>{tr('saveAs')}</button></div></div>}
-      {error && <p class="error" role="alert">{tr(error)}</p>}{busy && <p class="notice" role="status">{tr('working')}</p>}{notice && <p class="notice" role="status">{notice}</p>}
-      {lib && !pickers().showSaveFilePicker && <p class="small muted">{tr('unavailable')}</p>}
+      {error && <p class="error" role="alert">{tr(error)}</p>}{busy && !aiAbort.current && <p class="notice" role="status">{tr('working')}</p>}{notice && <div class="notice local-notice"><span role="status">{notice}</span><button type="button" class="icon-button" aria-label={tr('dismissNotice')} title={tr('dismissNotice')} onClick={() => setNotice('')}><Icon name="close"/></button></div>}
       {!lib ? <section class="empty viewer-welcome"><span class="empty-icon"><Icon name="archive"/></span><h1>{tr('localTitle')}</h1><p>{tr('welcome')}</p>
         {remembered ? <><p class="local-remembered-file" title={remembered.name}>{remembered.name}</p><div class="actions"><button class="primary" disabled={busy} onClick={() => void reopen()}>{tr('resume')}</button><button disabled={busy} onClick={() => void openLibrary()}>{tr('otherFile')}</button></div><div class="actions local-welcome-secondary"><button class="text-button" disabled={busy} onClick={() => void create()}>{tr('new')}</button><button class="text-button" disabled={busy} onClick={() => void forget()}>{tr('forget')}</button></div></>
         : <div class="actions"><button class="primary" disabled={busy} onClick={() => void create()}>{tr('new')}</button><button disabled={busy} onClick={() => void openLibrary()}>{tr('openLibrary')}</button></div>}
         {memoryError && <p class="small muted">{tr('memoryError')}</p>}
       </section> : <>
         {section === 'marks' && <LocalMarkManager key={source} lib={lib} source={source} selectedAccount={filters.account} tr={tr} symbolLabel={s => localSymbolText(s, language)} disabled={busy} change={mutate} open={chooseTag}/>}
-        {section === 'settings' && <section class="panel"><h1>{tr('settingsPage')}</h1><div class="filter-fields"><label>{tr('language')}<select aria-label={tr('language')} value={settings.language} disabled={busy} onChange={e => preference({ language: e.currentTarget.value as LocalSettings['language'] })}><option value="system">{tr('system')}</option><option value="ja">日本語</option><option value="en">English</option></select></label>
+        {section === 'auto-mark' && <><div class="page-heading"><div><h1>{aiText(language, 'page')}</h1></div></div>
+          <AiPage language={language} source={tr(source)} scope={aiText(language, 'searchScope')} total={results.length} note={aiText(language, 'searchScopeNote')} connected={!!aiConfig} openSettings={() => setSection('settings')}>
+            <AiControls language={language} config={aiConfig} progress={aiProgress} disabled={busy || !results.length} label="local" start={() => void autoMarkPosts()} stop={() => aiAbort.current?.abort()}/>
+            <p class="small muted">{tr('saveNote')}</p>
+          </AiPage></>}
+        {section === 'settings' && <div class="settings-stack"><section class="panel"><h1>{tr('settingsPage')}</h1><div class="filter-fields"><label>{tr('language')}<select aria-label={tr('language')} value={settings.language} disabled={busy} onChange={e => preference({ language: e.currentTarget.value as LocalSettings['language'] })}><option value="system">{tr('system')}</option><option value="ja">日本語</option><option value="en">English</option></select></label>
           <label>{tr('theme')}<select aria-label={tr('theme')} value={settings.theme} disabled={busy} onChange={e => preference({ theme: e.currentTarget.value as LocalSettings['theme'] })}>{(['system', 'light', 'dark'] as const).map(s => <option key={s} value={s}>{tr(s)}</option>)}</select></label></div>
           <label class="switch-label"><input type="checkbox" checked={previews} disabled={busy} onChange={e => previewPreference(e.currentTarget.checked)}/>{tr('previews')}</label><p class="small muted">{tr('previewNote')}</p><p class="muted">{tr('saveNote')}</p><dl class="local-capacity"><dt>{tr('total')}</dt><dd>{localCount(lib).toLocaleString(locale)}</dd><dt>{tr('fileSize')}</dt><dd>{bytes === null ? tr('notSaved') : `${(bytes / 1048576).toFixed(2)} MiB`}</dd></dl><p class="small muted">{tr('limits')}</p>
           {remembered && <div class="local-resume-setting"><p class="small muted local-remembered-file">{tr('rememberedFile')}: {remembered.name}</p><button disabled={busy} onClick={() => void forget()}>{tr('forget')}</button></div>}{memoryError && <p class="small muted">{tr('memoryError')}</p>}
-        </section>}
+        </section><AiSettings language={language} config={aiConfig} session disabled={busy} connect={async value => { setAiConfig(await connectDecision(value)); }} disconnect={async () => { setAiConfig(null); }}/></div>}
         {section === 'backup' && <section class="panel"><h1>{tr('backupPage')}</h1><h2>{tr('import')}</h2><p class="muted">{tr('importNote')}</p><button disabled={busy} onClick={() => importInput.current?.click()}>{tr('import')}</button><h2>{tr('localBackup')}</h2>
           <label>{tr('backupScope')}<select aria-label={tr('backupScope')} value={scope} disabled={busy} onChange={e => setScope(e.currentTarget.value)}><option value="entire">{tr('entire')}</option><option value="current">{tr('current')} · {tr(source)}</option>{marks.map(t => <option key={t.id} value={t.id}>{tagLabel(t.id)} · {metadata.counts.get(t.id) ?? 0}</option>)}</select></label>
           <div class="actions"><button class="primary" disabled={busy} onClick={() => exportBackup()}>{tr('localBackup')}</button>{source === 'bookmarks' && <button disabled={busy} onClick={() => exportBackup(true)}>{tr('extensionBackup')}</button>}</div><p class="small muted">{tr('extensionNote')}</p><p class="muted">{tr('saveNote')}</p>
         </section>}
         {section === 'posts' && <><div class="page-heading"><div><h1>{heading}</h1><p class="muted">{data?.posts.length.toLocaleString(locale) ?? 0} {tr('count')} · {tr(source)}</p></div></div>
           {source === 'likes' && <p class="small muted">{tr('likesInfo')}</p>}
-          <details class="filter-panel"><summary>{tr('filters')}</summary><div class="filter-fields"><label>{tr('author')}<input aria-label={tr('author')} value={author} maxLength={200} placeholder="@handle" onInput={e => setAuthor(e.currentTarget.value)}/></label>
+          <section class="filter-panel" aria-label={tr('filters')}><div class="filter-title"><strong><Icon name="search"/>{tr('filters')}</strong><button class="text-button" onClick={reset}>{tr('reset')}</button></div><div class="filter-fields">
             <label>{tr('account')}<select aria-label={tr('account')} value={filters.account} onChange={e => update({ account: e.currentTarget.value, tag: '' })}><option value="">{tr('any')}</option>{data?.accounts.map(a => <option key={a.id} value={a.id}>{a.handle ? `@${a.handle}` : tr('likesAccount')}</option>)}</select></label>
+            <label>{tr('author')}<input aria-label={tr('author')} value={author} maxLength={200} placeholder="@handle" onInput={e => setAuthor(e.currentTarget.value)}/></label>
             <label>{tr('tag')}<select aria-label={tr('tag')} value={filters.tag} onChange={e => update({ tag: e.currentTarget.value })}><option value="">{tr('any')}</option><option value=":with">{tr('marked')}</option><option value=":without">{tr('unmarked')}</option>{data?.tags.filter(t => !filters.account || t.accountId === filters.account).map(t => <option key={t.id} value={t.id}>{tagLabel(t.id)}</option>)}</select></label>
-            <label>{tr('read')}<select aria-label={tr('read')} value={filters.read} onChange={e => update({ read: e.currentTarget.value as ViewerFilters['read'] })}><option value="">{tr('any')}</option><option value="read">{tr('readYes')}</option><option value="unread">{tr('readNo')}</option></select></label>
             <label>{tr('media')}<select aria-label={tr('media')} value={filters.media} onChange={e => update({ media: e.currentTarget.value as ViewerFilters['media'] })}>{(['', 'with', 'without', 'image', 'video', 'unknown'] as const).map(s => <option key={s} value={s}>{tr(s === 'unknown' ? 'unknownMedia' : s || 'any')}</option>)}</select></label>
+            <label>{tr('read')}<select aria-label={tr('read')} value={filters.read} onChange={e => update({ read: e.currentTarget.value as ViewerFilters['read'] })}><option value="">{tr('any')}</option><option value="read">{tr('readYes')}</option><option value="unread">{tr('readNo')}</option></select></label>
             <label>{tr('links')}<select aria-label={tr('links')} value={filters.links} onChange={e => update({ links: e.currentTarget.value as ViewerFilters['links'] })}>{(['', 'with', 'without'] as const).map(s => <option key={s} value={s}>{tr(s || 'any')}</option>)}</select></label>
             <label>{tr('from')}<input type="date" value={from} onChange={e => { setFrom(e.currentTarget.value); }}/></label><label>{tr('to')}<input type="date" value={to} onChange={e => { setTo(e.currentTarget.value); }}/></label>
-          </div><button class="text-button" onClick={reset}>{tr('reset')}</button></details>
+          </div></section>
           <div class="toolbar"><span class="small muted" role="status">{tr('results')}: {results.length.toLocaleString(locale)} {tr('count')}</span><div class="display-controls"><select aria-label={tr('order')} value={filters.postedOrder ?? (filters.reverse ? 'reverse' : 'original')} onChange={e => { const value = e.currentTarget.value; update({ postedOrder: isPostDateOrder(value) ? value : undefined, reverse: value === 'reverse' }); }}><option value="original">{tr('original')}</option><option value="reverse">{tr('reverse')}</option><option value="posted-newest">{tr('postedNewest')}</option><option value="posted-oldest">{tr('postedOldest')}</option></select>
             <select class="columns-select" aria-label={tr('columns')} value={settings.columns} disabled={busy} onChange={e => preference({ columns: Number(e.currentTarget.value) })}>{[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}</select>
             <div class="view-switch"><button class="icon-button" aria-label={tr('grid')} aria-pressed={settings.layout === 'grid'} disabled={busy} onClick={() => preference({ layout: 'grid' })}><Icon name="grid"/></button><button class="icon-button" aria-label={tr('list')} aria-pressed={settings.layout === 'list'} disabled={busy} onClick={() => preference({ layout: 'list' })}><Icon name="list"/></button></div>

@@ -1,3 +1,5 @@
+import { loadDecision, createAiJob, cancelAiJob, wakeAiJobs, registerAiJobs } from './auto-marks';
+import { AI_JOB, type AiJob } from './decision';
 import { accountFor, commitBatch, libraryStores, storeForSource, finishRun, newRun } from './db';
 import { type ImportRun, type StopReason, type LibrarySource, type ImportLocations, REASON_LABELS, isLibrarySource, validHandle, validateOptions } from './model';
 import { isImportPageUrl, runImportLocations } from './import-locations';
@@ -55,6 +57,8 @@ async function start(message: Record<string, unknown>, source: LibrarySource) {
   await previous;
   try {
     const options = validateOptions(message.options);
+    const aiConfig = message.autoMark === true ? await loadDecision() : null;
+    if (message.autoMark === true && !aiConfig) throw new Error('Connect local AI in Settings first');
     const tabId = message.tabId as number;
     const locations = await loadImportLocations();
     const identity = await inspect(tabId, locations);
@@ -68,6 +72,7 @@ async function start(message: Record<string, unknown>, source: LibrarySource) {
     run.importLocations = locations;
     await store.importRuns.add(run);
     try {
+      if (aiConfig) { await createAiJob(store, aiConfig, { runId: run.id }); await wakeAiJobs(); }
       const result = await chrome.tabs.sendMessage(tabId, { type: 'READ', run }, { documentId: run.documentId });
       if (!result?.started) throw new Error('読み取りを開始できません');
     } catch { await finishRun(run.id, 'error', store); throw new Error('読み取りを開始できません'); }
@@ -79,6 +84,14 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
   const source = sourceOf(message.source);
   const store = storeForSource(source);
   if (trustedPage(sender)) {
+    if (message.type === 'AI_START') {
+      const config = await loadDecision(); if (!config) throw new Error('Connect local AI in Settings first');
+      if (message.runId !== undefined && (typeof message.runId !== 'string' || message.runId.length > 64)) throw new Error('Invalid import');
+      if (message.accountId !== undefined && (typeof message.accountId !== 'string' || message.accountId.length > 64)) throw new Error('Invalid account');
+      const job = await createAiJob(store, config, { runId: message.runId as string | undefined, accountId: message.accountId as string | undefined });
+      await wakeAiJobs(); return job;
+    }
+    if (message.type === 'AI_STOP') { await cancelAiJob(store); return true; }
     if (message.type === 'INSPECT_TAB') return inspect(message.tabId as number);
     if (message.type === 'START') return start(message, source);
     if (message.type === 'STATUS') { await expireRuns(); return store.importRuns.orderBy('startedAt').reverse().first(); }
@@ -95,7 +108,9 @@ async function handle(message: Record<string, unknown>, sender: chrome.runtime.M
     const identity = await chrome.tabs.sendMessage(run.tabId, { type: 'INSPECT', locations }, { documentId: run.documentId });
     if (identity?.source !== source) return finishRun(run.id, 'source_scope_changed', store);
     if (identity?.handle !== run.handle || identity.restricted || !isImportPageUrl(identity.url, locations)) return finishRun(run.id, 'account_changed', store);
-    return commitBatch(run.id, message.sequence as number, message.posts, store);
+    const saved = await commitBatch(run.id, message.sequence as number, message.posts, store);
+    if (((await store.settings.get(AI_JOB))?.value as AiJob | undefined)?.state === 'running') void wakeAiJobs();
+    return saved;
   }
   if (message.type === 'HEARTBEAT') return store.transaction('rw', store.importRuns, async () => {
     const current = await store.importRuns.get(run.id);
@@ -130,3 +145,5 @@ chrome.tabs.onUpdated.addListener((tabId, changes) => {
 chrome.runtime.onStartup.addListener(() => {
   for (const store of libraryStores) void store.importRuns.where('state').equals('running').toArray().then(runs => Promise.all(runs.map(r => finishRun(r.id, 'interrupted', store))));
 });
+
+registerAiJobs();

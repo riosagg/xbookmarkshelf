@@ -7,6 +7,9 @@
 .local-file-bar .actions { margin-left: auto; flex-wrap: wrap; }
 .local-file-bar .small-button { font-size: 10px; }
 .local-dirty { color: var(--focus); }
+.local-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.local-notice > span { min-width: 0; }
+.local-notice .icon-button { color: inherit; }
 .local-save { flex-shrink: 0; }
 .local-extra-nav { margin-top: auto; padding-top: 20px; }
 .local-extra-nav .nav-item { font-size: 11px; }

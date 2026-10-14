@@ -1,3 +1,5 @@
+import { useDecisionConnection, ExtensionImportAiStatus } from './extension-ai';
+import { aiText } from './ai-ui';
 import { LanguageProvider, useI18n } from './i18n';
 import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -15,11 +17,12 @@ import './style.css';
 
 function Popup() {
   const { language, t: tr, message } = useI18n();
+  const aiConfig = useDecisionConnection();
   const { locations: importLocations } = useImportLocations();
   useEffect(() => { document.title = `${tr('取り込み')} — xbookmarkshelf`; }, [language]);
   const initial = new URL(location.href).searchParams.get('source');
   const [form, setForm] = useState(() => preferencesFromOptions(isLibrarySource(initial) ? initial : 'bookmarks', DEFAULT_OPTIONS));
-  const { source, waitMode, mode } = form;
+  const { source, waitMode, mode, autoMark } = form;
   const interval = form.intervalMs / 1000; const maximum = form.intervalMaxMs / 1000; const limit = form.maxPosts;
   const [ready, setReady] = useState(false); const [preferenceError, setPreferenceError] = useState('');
   const hasSaved = useRef(false); const edited = useRef(false); const pendingSave = useRef(Promise.resolve());
@@ -29,13 +32,17 @@ function Popup() {
   const [statusError, setStatusError] = useState('');
   const inspectionSequence = useRef(0); const alive = useRef(true);
   const [run, setRun] = useState<ImportRun>(); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
-  function persist(value: PopupPreferences) {
-    if (!validatePopupPreferences(value)) return pendingSave.current;
-    pendingSave.current = pendingSave.current.then(() => savePopupPreferences(value)).then(() => { hasSaved.current = true; setPreferenceError(''); }).catch(() => setPreferenceError('取り込み設定を保存できません'));
+  function persist(value: PopupPreferences, rememberAutoMark = false) {
+    const valid = validatePopupPreferences(value);
+    if (!valid && !rememberAutoMark) return pendingSave.current;
+    pendingSave.current = pendingSave.current.then(async () => {
+      const saved = valid ?? { ...(await loadPopupPreferences() ?? preferencesFromOptions(value.source, DEFAULT_OPTIONS)), autoMark: value.autoMark };
+      await savePopupPreferences(saved);
+    }).then(() => { hasSaved.current = true; setPreferenceError(''); }).catch(() => setPreferenceError('取り込み設定を保存できません'));
     return pendingSave.current;
   }
   function edit(change: Partial<PopupPreferences>) {
-    const next = { ...currentForm.current, ...change }; edited.current = true; applyForm(next); void persist(next);
+    const next = { ...currentForm.current, ...change }; edited.current = true; applyForm(next); void persist(next, typeof change.autoMark === 'boolean');
   }
   function applyForm(value: PopupPreferences) {
     currentForm.current = value; setForm(value);
@@ -101,7 +108,7 @@ function Popup() {
         setRun(undefined); setStatusError('拡張とXのタブを再読み込みしてから、もう一度確認してください'); return;
       }
       setStatusError('');
-      if (value && ((!hydrated && !hasSaved.current && !edited.current) || value.state === 'running')) applyForm(preferencesFromOptions(source, value));
+      if (value && ((!hydrated && !hasSaved.current && !edited.current) || value.state === 'running')) applyForm(preferencesFromOptions(source, value, currentForm.current.autoMark));
       hydrated = true; setRun(value);
     };
     setRun(undefined); setStatusError(''); void load().catch(() => { if (active) setStatusError('状態を取得できません'); });
@@ -119,7 +126,7 @@ function Popup() {
   }
   async function start() {
     if (!ready || !target || !targetMatches || !validatePopupPreferences(form)) return; setBusy(true); setError('');
-    try { await persist(form); setRun(await command<ImportRun>('START', { ...target, source, options: popupOptions(form) })); }
+    try { await persist(form); setRun(await command<ImportRun>('START', { ...target, source, options: popupOptions(form), autoMark: autoMark && !!aiConfig })); }
     catch (e) { setError(e instanceof Error ? e.message : '開始できません'); }
     finally { setBusy(false); }
   }
@@ -130,7 +137,7 @@ function Popup() {
     finally { setBusy(false); }
   }
   return <main class="popup">
-    <header class="popup-brand"><span class="brand-mark"><BrandMark/></span><strong>xbookmarkshelf<span>FOR X</span></strong><span class="version">v0.1.0</span></header>
+    <header class="popup-brand"><span class="brand-mark"><BrandMark/></span><strong>xbookmarkshelf<span>FOR X</span></strong><span class="version">v0.1.1</span></header>
     {target && <div class="account"><span class="status-dot"/><span>{tr("対象アカウント")}</span><strong>@{target.handle}</strong><Icon name="check"/></div>}
     <div class="fields"><label>{tr('取り込み対象')}<select value={source} disabled={disabled} onChange={event => { const value = event.currentTarget.value; if (isLibrarySource(value)) changeSource(value); }}><option value="bookmarks">{tr('ブックマーク')}</option><option value="likes">{tr('いいね')}</option></select></label>
       <label>{tr('取り込み範囲')}<select value={mode} disabled={disabled} onChange={event => edit({ mode: event.currentTarget.value as Mode })}><option value="full">{tr('現在の一覧を先頭から再走査')}</option><option value="delta">{tr('新規分を中心に取得')}</option></select></label></div>
@@ -144,8 +151,11 @@ function Popup() {
     {(targetError || statusError) && <p class="error" role="alert">{message(targetError || statusError)}</p>}
     {error && <p class="error" role="alert">{message(error)}</p>}
     {run && <div class="progress" aria-live="polite"><strong>{run.state === 'running' ? tr("読み取り中") : run.reason ? tr(REASON_LABELS[run.reason]) : tr("終了")}</strong>{run.reason === 'run_limit' && <p>{tr("設定した上限まで保存しました。")}</p>}<p>{tr('保存確認 {observed}件 · 新規 {added}件 · 既存 {existing}件', { observed: run.observed, added: run.added, existing: run.existing })}</p></div>}
+    <label class="switch-label"><input type="checkbox" checked={autoMark && !!aiConfig} disabled={disabled || !aiConfig} onChange={e => edit({ autoMark: e.currentTarget.checked })}/>{aiText(language, 'auto')}</label>
+    {ready && autoMark && !aiConfig && <p class="small muted">{aiText(language, 'configure')}</p>}
     {run?.state === 'running' ? <div class="actions"><button class="primary" onClick={() => stop(true)} disabled={busy}>{tr("一時停止")}</button><button onClick={() => stop(false)} disabled={busy}>{tr("終了")}</button></div> : <button class="primary full" onClick={start} disabled={!ready || !targetMatches || !validatePopupPreferences(form) || busy}><Icon name="download"/>{busy ? tr("準備中…") : run?.state === 'paused' ? tr("先頭から再実行") : tr("少量ずつ自動取り込み")}</button>}
     <p class="popup-note"><Icon name="lock"/><span>{tr(source === "likes" ? "XのLikesを表示したまま使います。停止後も保存済み投稿は残ります。" : "XのBookmarksを表示したまま使います。停止後も保存済み投稿は残ります。")}</span></p>
+    {run && <ExtensionImportAiStatus source={source} runId={run.id}/>}
     <footer class="popup-footer"><button class="text-button" onClick={() => { void chrome.tabs.create({ url: chrome.runtime.getURL(`library.html?source=${source}`) }); }}>{tr("ライブラリを開く")}<Icon name="external"/></button></footer>
   </main>;
 }

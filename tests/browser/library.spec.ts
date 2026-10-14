@@ -185,7 +185,7 @@ test('merged mark heading and unmarked page stay accurate across accounts, filte
   const nav = page.getByRole('navigation', { name: 'ライブラリ', exact: true });
   const unmarked = nav.getByRole('button', { name: /^マークなし/ });
   const manager = page.getByRole('button', { name: 'マークを管理', exact: true });
-  await expect(nav.getByRole('button')).toHaveText(['すべてのブックマーク6', 'あとで読む4', 'マークなし2']);
+  await expect(nav.getByRole('button')).toHaveText(['すべてのブックマーク6', 'あとで読む4', 'マークなし2', '自動マーク']);
   await expect(manager).toHaveCount(1);
   await manager.locator('span').first().click();
   await expect(page.getByRole('heading', { name: 'マーク', exact: true, level: 1 })).toBeVisible();
@@ -762,7 +762,7 @@ test('image and video covers default to on, while saved off prevents requests ac
   const settings = () => page.getByRole('navigation', { name: '管理', exact: true }).getByRole('button', { name: '設定', exact: true }).click();
   await settings(); await expect(page.getByLabel('画像プレビューを表示')).toBeChecked();
   await page.getByLabel('画像プレビューを表示').uncheck();
-  await expect(page.locator('.switch-label')).toHaveText('オフ');
+  await expect(page.getByLabel('画像プレビューを表示').locator('..')).toHaveText('オフ');
   await expect.poll(() => page.evaluate(async () => {
     const path = '/src/db.ts'; const { db } = await import(path);
     return (await db.settings.get('previews'))?.value;
