@@ -4,7 +4,9 @@ import { mkdtemp, cp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { emptyLocalLibrary, type LocalPost } from '../../src/local-data';
+const SYNTHETIC_IMAGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAb0lEQVR4nO3PAQkAAAyEwO9feoshgnABdLep8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3IPanc8OLDQitxAAAAAElFTkSuQmCC', 'base64');
 let server: Server; let endpoint: string; let sawImages = false;
+const importImageCounts: number[] = [];
 let holdDecisions = false; const heldResponses: (() => void)[] = [];
 test.beforeAll(async () => {
   server = createServer((req, res) => {
@@ -12,6 +14,7 @@ test.beforeAll(async () => {
     if (req.method === 'OPTIONS') { res.end(); return; }
     let body = ''; req.on('data', part => body += part); req.on('end', () => {
       const data = JSON.parse(body); const state = JSON.stringify(data.state); if (data.images?.length) sawImages = true;
+      if (!data.questions.connection) importImageCounts.push(data.images?.length ?? 0);
       const answers = Object.fromEntries(Object.entries(data.questions).map(([id, q]) => [id, { type: 'noul', noul: id === 'connection' || !state.includes('unrelated') && (q as { instructions: string }).instructions.includes('Programming') ? 0.99 : 0.01 }]));
       res.setHeader('Content-Type', 'application/json');
       const send = () => { if (!res.destroyed) res.end(JSON.stringify({ answers })); };
@@ -21,9 +24,9 @@ test.beforeAll(async () => {
   await new Promise<void>(done => server.listen(0, '127.0.0.1', done)); endpoint = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
 });
 test.afterAll(async () => { await new Promise<void>(done => server.close(() => done())); });
-async function extension() {
+async function extension(images = false) {
   const temp = await mkdtemp(join(tmpdir(), 'xbs-ai-')); const path = join(temp, 'extension'); await cp(resolve('dist'), path, { recursive: true });
-  const manifest = JSON.parse(await readFile(join(path, 'manifest.json'), 'utf8')); manifest.host_permissions = ['http://127.0.0.1/*', 'https://x.com/*']; await writeFile(join(path, 'manifest.json'), JSON.stringify(manifest));
+  const manifest = JSON.parse(await readFile(join(path, 'manifest.json'), 'utf8')); manifest.host_permissions = ['http://127.0.0.1/*', 'https://x.com/*', ...(images ? ['https://pbs.twimg.com/*'] : [])]; await writeFile(join(path, 'manifest.json'), JSON.stringify(manifest));
   const context = await chromium.launchPersistentContext(join(temp, 'profile'), { channel: 'chromium', headless: true, args: [`--disable-extensions-except=${path}`, `--load-extension=${path}`] });
   const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker'); const id = worker.url().split('/')[2]!;
   const page = await context.newPage(); await page.goto(`chrome-extension://${id}/library.html`);
@@ -38,7 +41,7 @@ async function extension() {
   await expect(page.getByRole('button', { name: '投稿一覧へ戻る', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '接続設定を開く', exact: true }).click();
   await expect(page.locator('.settings-stack > :last-child')).toHaveClass(/ai-settings/);
-  await page.getByLabel('LM StudioのURL', { exact: true }).fill(endpoint); await page.getByLabel('画像も判定に使う', { exact: true }).uncheck();
+  await page.getByLabel('LM StudioのURL', { exact: true }).fill(endpoint); await page.getByLabel('画像も判定に使う', { exact: true }).setChecked(images);
   await page.getByRole('button', { name: '接続を確認して保存', exact: true }).click(); await expect(page.locator('.ai-connection')).toContainText('接続設定済み');
   return { context, page, worker, id, async close() { await context.close(); await rm(temp, { recursive: true, force: true }); } };
 }
@@ -70,23 +73,26 @@ test('real MV3 import-result and account buttons process beyond 50 posts and pre
     await env.page.setViewportSize({ width: 390, height: 844 }); expect(await env.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   } finally { holdDecisions = false; heldResponses.splice(0).forEach(send => send()); await env.close(); }
 });
-test('auto-marking during import continues after the popup closes', async () => {
+test('auto-marking during a 20-post image import continues after the popup closes', async () => {
   test.setTimeout(45000);
-  const env = await test.step('Configure extension', extension);
+  importImageCounts.length = 0;
+  const env = await test.step('Configure extension', () => extension(true));
   try {
-    await env.context.route('https://x.com/**', route => route.fulfill({ contentType: 'text/html', body: '<html><body><a data-testid="AppTabBar_Profile_Link" href="/synthetic_user">Profile</a><main>'+Array.from({ length: 10 }, (_, i) => `<article data-testid="tweet"><div data-testid="User-Name">Synthetic</div><a href="/sample/status/${i+1}"><time datetime="2026-10-14T00:00:00Z"></time></a><div data-testid="tweetText">Python programming</div></article>`).join('')+'</main></body></html>' }));
+    await env.context.route('https://pbs.twimg.com/**', route => route.fulfill({ contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: SYNTHETIC_IMAGE }));
+    await env.context.route('https://x.com/**', route => route.fulfill({ contentType: 'text/html', body: '<html><body><a data-testid="AppTabBar_Profile_Link" href="/synthetic_user">Profile</a><main>'+Array.from({ length: 20 }, (_, i) => `<article data-testid="tweet"><div data-testid="User-Name">Synthetic</div><a href="/sample/status/${i+1}"><time datetime="2026-10-14T00:00:00Z"></time></a><div data-testid="tweetText">Python programming</div><div data-testid="${i % 2 ? 'videoPlayer' : 'tweetPhoto'}"><img src="https://pbs.twimg.com/media/synthetic-${i+1}.png"></div></article>`).join('')+'</main></body></html>' }));
     const source = await env.context.newPage(); await source.goto('https://x.com/i/bookmarks');
     const popup = await env.context.newPage(); await source.bringToFront(); await popup.goto(`chrome-extension://${env.id}/popup.html`);
-    await popup.getByLabel('今回の上限（件）').fill('10'); await popup.getByLabel('取り込み中に自動マークを付ける').check(); await source.bringToFront();
+    await popup.getByLabel('今回の上限（件）').fill('20'); await popup.getByLabel('取り込み中に自動マークを付ける').check(); await source.bringToFront();
     await popup.getByRole('button', { name: '少量ずつ自動取り込み', exact: true }).click(); await expect(popup.locator('.progress strong')).toHaveText('読み取り中'); await popup.close(); await source.bringToFront();
-    await expect.poll(async () => env.worker.evaluate(async () => { const d = await new Promise<IDBDatabase>(done => { const r = indexedDB.open('x-bookmark-library'); r.onsuccess = () => done(r.result); }); const v = await new Promise<any>(done => { const r = d.transaction('settings').objectStore('settings').get('decisionJob'); r.onsuccess = () => done(r.result?.value); }); d.close(); return v?.state === 'completed' ? v?.marked : 0; }), { timeout: 30000 }).toBe(10);
+    await expect.poll(async () => env.worker.evaluate(async () => { const d = await new Promise<IDBDatabase>(done => { const r = indexedDB.open('x-bookmark-library'); r.onsuccess = () => done(r.result); }); const v = await new Promise<any>(done => { const r = d.transaction('settings').objectStore('settings').get('decisionJob'); r.onsuccess = () => done(r.result?.value); }); d.close(); return v?.state === 'completed' ? v?.marked : 0; }), { timeout: 30000 }).toBe(20);
+    expect(importImageCounts).toEqual(Array(20).fill(1));
   } finally { await env.close(); }
 });
 test('file app connects through CORS, sends image bytes and saves additive marks in JSON', async ({ page }) => {
   sawImages = false; await page.goto('file://' + resolve('local-dist/xbookmarkshelf-local.html'));
   const lib = emptyLocalLibrary(); lib.libraries.bookmarks = { accounts: [{ id: 'a', handle: 'sample' }], tags: [{ id: 'old', accountId: 'a', name: 'Manual', mark: 'star' }, { id: 'code', accountId: 'a', name: 'Programming', mark: 'code' }], posts: [{ accountId: 'a', postId: '1', authorHandle: 'sample', authorName: 'Synthetic', text: 'Python programming', postedAt: null, observedAt: '2026-10-14T00:00:00Z', firstImportedAt: '2026-10-14T00:00:00Z', lastImportedAt: '2026-10-14T00:00:00Z', url: 'https://x.com/sample/status/1', partial: false, media: [{ kind: 'image', url: 'https://pbs.twimg.com/media/synthetic.png' }], mediaStatus: 'observed', dateSource: 'unknown', read: true, favorite: true, tagIds: ['old'] }] };
   await page.getByLabel('管理JSONを開く', { exact: true }).setInputFiles({ name: 'synthetic-library.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(lib)) });
-  await page.route('https://pbs.twimg.com/**', route => route.fulfill({ contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAb0lEQVR4nO3PAQkAAAyEwO9feoshgnABdLep8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3I8QUNyPEFDcjxBQ3IPanc8OLDQitxAAAAAElFTkSuQmCC', 'base64') }));
+  await page.route('https://pbs.twimg.com/**', route => route.fulfill({ contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: SYNTHETIC_IMAGE }));
   await page.getByRole('button', { name: /^(設定|Settings)$/ }).click(); await page.getByLabel('LM StudioのURL', { exact: true }).fill(endpoint); await page.getByLabel('モデルID', { exact: true }).fill('m'.repeat(200)); await page.getByRole('button', { name: '接続を確認して適用', exact: true }).click(); await expect(page.locator('.ai-connection')).toContainText('接続設定済み');
   await expect(page.locator('.settings-stack > :last-child')).toHaveClass(/ai-settings/); await expect(page.locator('main .ai-controls')).toHaveCount(0);
   await page.getByRole('button', { name: '自動マーク', exact: true }).click(); await expect(page.getByRole('heading', { name: '自動マーク', exact: true })).toBeVisible();
