@@ -1,4 +1,4 @@
-import { AiSettings, AiControls } from './ai-ui';
+import { AiSettings, AiControls, AiPage, aiText } from './ai-ui';
 import { connectDecision, type DecisionConfig, type AiProgress } from './decision';
 import { runLocalAutoMarks } from './local-auto-marks';
 import { render } from 'preact';
@@ -21,7 +21,7 @@ import type { LocalImport } from './local-data';
 import type { ViewerLanguage } from './viewer-messages';
 import { PostFeed, usePostFeed } from './post-feed';
 
-type PageName = 'posts' | 'marks' | 'backup' | 'settings';
+type PageName = 'posts' | 'marks' | 'auto-mark' | 'backup' | 'settings';
 const systemLanguage = (): ViewerLanguage => /^ja(?:[-_]|$)/i.test(navigator.language) ? 'ja' : 'en';
 const cancelled = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
 function App() {
@@ -185,6 +185,7 @@ function App() {
       <nav class="side-nav" aria-label={tr('localTitle')}><button class={`nav-item ${section === 'posts' && !filters.tag && !filters.read ? 'active' : ''}`} onClick={() => { setSection('posts'); update({ tag: '', read: '' }); }}><Icon name="bookmark"/><span class="nav-text">{tr(source === 'bookmarks' ? 'allBookmarks' : 'allLikes')}</span><span class="nav-count">{data?.posts.length.toLocaleString(locale) ?? 0}</span></button>
         <button class={`nav-item ${section === 'posts' && filters.read === 'unread' ? 'active' : ''}`} onClick={() => { setSection('posts'); update({ tag: '', read: 'unread' }); }}><Icon name="unread"/><span class="nav-text">{tr('unread')}</span><span class="nav-count">{metadata.unread}</span></button>
         <button class={`nav-item ${section === 'posts' && filters.tag === ':without' ? 'active' : ''}`} onClick={() => chooseTag(':without')}><Icon name="tag"/><span class="nav-text">{tr('unmarked')}</span><span class="nav-count">{metadata.unmarked}</span></button>
+        <button class={`nav-item ${section === 'auto-mark' ? 'active' : ''}`} aria-label={aiText(language, 'page')} aria-current={section === 'auto-mark' ? 'page' : undefined} disabled={!lib} onClick={() => setSection('auto-mark')}><Icon name="bolt"/><span class="nav-text">{aiText(language, 'page')}</span>{aiProgress?.state === 'running' && <span class="nav-count ai-nav-status" role="status">{aiText(language, 'active')}</span>}</button>
       </nav>
       <nav class="side-tags side-marks" aria-label={tr('marks')}><button class={`mark-section-heading ${section === 'marks' ? 'active' : ''}`} aria-label={tr('manageMarks')} onClick={() => setSection('marks')}><span>{tr('marks')}</span><span class="mark-section-add"><Icon name="plus"/></span></button>
         {sidebarMarks.map(t => <button key={t.id} class={`nav-item ${section === 'posts' && filters.tag === t.id ? 'active' : ''}`} title={tagLabel(t.id)} onClick={() => chooseTag(t.id)}><Icon name={t.mark!}/><span class="nav-text">{tagLabel(t.id)}</span><span class="nav-count">{metadata.counts.get(t.id) ?? 0}</span></button>)}
@@ -199,8 +200,7 @@ function App() {
       <input ref={importInput} hidden type="file" multiple accept=".json,.js,application/json,text/javascript" aria-label={tr('import')} onChange={e => void importFiles(Array.from(e.currentTarget.files ?? []))}/>
       <input ref={openInput} hidden type="file" accept=".json,application/json" aria-label={tr('openLibrary')} onChange={e => void openFallback(e.currentTarget.files?.[0])}/>
       {lib && <div class="local-file-bar"><span class="viewer-filename" title={filename}>{filename || tr('newFile')}</span><span class={dirty ? 'local-dirty' : 'muted'} role="status">{tr(dirty ? 'unsaved' : 'saved')}</span><div class="actions"><button class="small-button" disabled={busy} onClick={() => void create()}>{tr('new')}</button><button class="small-button" disabled={busy} onClick={() => void openLibrary()}>{tr('openLibrary')}</button><button class="small-button" disabled={busy} onClick={() => void save(true)}>{tr('saveAs')}</button></div></div>}
-      {lib && <AiControls language={language} config={aiConfig} progress={aiProgress} disabled={busy || !results.length} label="local" start={() => void autoMarkPosts()} stop={() => aiAbort.current?.abort()}/>}
-      {error && <p class="error" role="alert">{tr(error)}</p>}{busy && <p class="notice" role="status">{tr('working')}</p>}{notice && <p class="notice" role="status">{notice}</p>}
+      {error && <p class="error" role="alert">{tr(error)}</p>}{busy && !aiAbort.current && <p class="notice" role="status">{tr('working')}</p>}{notice && <p class="notice" role="status">{notice}</p>}
       {lib && !pickers().showSaveFilePicker && <p class="small muted">{tr('unavailable')}</p>}
       {!lib ? <section class="empty viewer-welcome"><span class="empty-icon"><Icon name="archive"/></span><h1>{tr('localTitle')}</h1><p>{tr('welcome')}</p>
         {remembered ? <><p class="local-remembered-file" title={remembered.name}>{remembered.name}</p><div class="actions"><button class="primary" disabled={busy} onClick={() => void reopen()}>{tr('resume')}</button><button disabled={busy} onClick={() => void openLibrary()}>{tr('otherFile')}</button></div><div class="actions local-welcome-secondary"><button class="text-button" disabled={busy} onClick={() => void create()}>{tr('new')}</button><button class="text-button" disabled={busy} onClick={() => void forget()}>{tr('forget')}</button></div></>
@@ -208,6 +208,11 @@ function App() {
         {memoryError && <p class="small muted">{tr('memoryError')}</p>}
       </section> : <>
         {section === 'marks' && <LocalMarkManager key={source} lib={lib} source={source} selectedAccount={filters.account} tr={tr} symbolLabel={s => localSymbolText(s, language)} disabled={busy} change={mutate} open={chooseTag}/>}
+        {section === 'auto-mark' && <><div class="page-heading"><div><h1>{aiText(language, 'page')}</h1></div></div>
+          <AiPage language={language} source={tr(source)} scope={aiText(language, 'searchScope')} total={results.length} note={aiText(language, 'searchScopeNote')} openList={() => setSection('posts')} openSettings={() => setSection('settings')}>
+            <AiControls language={language} config={aiConfig} progress={aiProgress} disabled={busy || !results.length} label="local" start={() => void autoMarkPosts()} stop={() => aiAbort.current?.abort()}/>
+            <p class="small muted">{tr('saveNote')}</p>
+          </AiPage></>}
         {section === 'settings' && <div class="settings-stack"><section class="panel"><h1>{tr('settingsPage')}</h1><div class="filter-fields"><label>{tr('language')}<select aria-label={tr('language')} value={settings.language} disabled={busy} onChange={e => preference({ language: e.currentTarget.value as LocalSettings['language'] })}><option value="system">{tr('system')}</option><option value="ja">日本語</option><option value="en">English</option></select></label>
           <label>{tr('theme')}<select aria-label={tr('theme')} value={settings.theme} disabled={busy} onChange={e => preference({ theme: e.currentTarget.value as LocalSettings['theme'] })}>{(['system', 'light', 'dark'] as const).map(s => <option key={s} value={s}>{tr(s)}</option>)}</select></label></div>
           <label class="switch-label"><input type="checkbox" checked={previews} disabled={busy} onChange={e => previewPreference(e.currentTarget.checked)}/>{tr('previews')}</label><p class="small muted">{tr('previewNote')}</p><p class="muted">{tr('saveNote')}</p><dl class="local-capacity"><dt>{tr('total')}</dt><dd>{localCount(lib).toLocaleString(locale)}</dd><dt>{tr('fileSize')}</dt><dd>{bytes === null ? tr('notSaved') : `${(bytes / 1048576).toFixed(2)} MiB`}</dd></dl><p class="small muted">{tr('limits')}</p>

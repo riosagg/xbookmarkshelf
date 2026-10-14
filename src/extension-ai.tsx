@@ -13,6 +13,15 @@ export function useDecisionConnection() {
   useEffect(() => { const subscription = liveQuery(loadDecision).subscribe({ next: setConfig, error: () => setConfig(null) }); return () => subscription.unsubscribe(); }, []);
   return config;
 }
+export function useAiJob(source: LibrarySource) {
+  const [job, setJob] = useState<AiJob | null>(null);
+  useEffect(() => {
+    setJob(null);
+    const subscription = liveQuery(async () => ((await storeForSource(source).settings.get(AI_JOB))?.value ?? null) as AiJob | null).subscribe({ next: setJob, error: () => setJob(null) });
+    return () => subscription.unsubscribe();
+  }, [source]);
+  return job;
+}
 export function ExtensionAiSettings() {
   const { language } = useI18n(); const config = useDecisionConnection();
   return <AiSettings language={language} config={config} connect={async value => {

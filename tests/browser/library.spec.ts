@@ -185,7 +185,7 @@ test('merged mark heading and unmarked page stay accurate across accounts, filte
   const nav = page.getByRole('navigation', { name: 'ライブラリ', exact: true });
   const unmarked = nav.getByRole('button', { name: /^マークなし/ });
   const manager = page.getByRole('button', { name: 'マークを管理', exact: true });
-  await expect(nav.getByRole('button')).toHaveText(['すべてのブックマーク6', 'あとで読む4', 'マークなし2']);
+  await expect(nav.getByRole('button')).toHaveText(['すべてのブックマーク6', 'あとで読む4', 'マークなし2', '自動マーク']);
   await expect(manager).toHaveCount(1);
   await manager.locator('span').first().click();
   await expect(page.getByRole('heading', { name: 'マーク', exact: true, level: 1 })).toBeVisible();

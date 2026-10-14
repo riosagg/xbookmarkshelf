@@ -1,8 +1,13 @@
 import { useEffect, useId, useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
 import { DEFAULT_DECISION, type DecisionConfig, type AiProgress } from './decision';
 
 const labels = {
   title: ['ローカルAIで自動マーク', 'Auto-mark with local AI'], url: ['LM StudioのURL', 'LM Studio URL'], model: ['モデルID', 'Model ID'], threshold: ['マークを付ける基準（%）', 'Match threshold (%)'],
+  page: ['自動マーク', 'Auto-mark'], active: ['処理中', 'Running'], target: ['対象の投稿', 'Target posts'], library: ['ライブラリ', 'Library'], scope: ['対象範囲', 'Scope'], count: ['対象の件数', 'Post count'],
+  searchScope: ['現在の検索結果', 'Current search results'], searchScopeNote: ['一覧の検索・絞り込み条件に一致する投稿を判定します。対象を変える場合は、一覧で条件を調整してください。', 'Matches posts using the search and filters from your list. Return to the list to adjust the target.'],
+  accountScopeNote: ['選択したアカウントの保存済み投稿をすべて判定します。', 'Matches all saved posts in the selected account scope.'],
+  openList: ['投稿一覧へ戻る', 'Back to post list'], openSettings: ['接続設定を開く', 'Open connection settings'],
   connection: ['接続先', 'Connection'], criteria: ['判定条件', 'Matching options'],
   thresholdNote: ['AIの判定値がこの数値以上なら、マークを付けます。高くするほど、付与を控えめにします。', 'Adds a mark when its AI match probability meets this threshold. Higher values add fewer marks.'],
   images: ['画像も判定に使う', 'Use images for matching'], imageNote: ['オンにすると、投稿画像や動画の表紙などを1投稿につき最大4枚、Xの画像サーバーから読み込んでLM Studioへ渡します。', 'When enabled, loads up to four images per post, including video covers, from X’s image server and sends them to LM Studio.'],
@@ -18,6 +23,14 @@ const labels = {
 } as const;
 export type AiLabel = keyof typeof labels;
 export const aiText = (language: string, key: AiLabel): string => labels[key][language === 'ja' ? 0 : 1];
+export function AiPage({ language, source, scope, total, note, openList, openSettings, children }: { language: string; source: string; scope: ComponentChildren; total: number; note: string; openList(): void; openSettings(): void; children: ComponentChildren }) {
+  const t = (key: AiLabel) => aiText(language, key);
+  return <section class="panel ai-page"><h2>{t('target')}</h2><p class="muted">{note}</p>
+    <dl class="ai-target"><div><dt>{t('library')}</dt><dd>{source}</dd></div><div><dt>{t('scope')}</dt><dd>{scope}</dd></div><div><dt>{t('count')}</dt><dd>{total.toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US')}</dd></div></dl>
+    <div class="actions ai-page-links"><button onClick={openList}>{t('openList')}</button><button onClick={openSettings}>{t('openSettings')}</button></div>
+    <div class="ai-page-run">{children}</div>
+  </section>;
+}
 export function AiSettings({ language, config, disabled, session = false, connect, disconnect }: { language: string; config: DecisionConfig | null; disabled?: boolean; session?: boolean; connect(value: DecisionConfig): Promise<void>; disconnect(): Promise<void> }) {
   const [form, setForm] = useState({ ...DEFAULT_DECISION }); const [busy, setBusy] = useState(false); const [error, setError] = useState(false);
   const id = useId();

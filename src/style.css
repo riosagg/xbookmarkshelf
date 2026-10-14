@@ -372,6 +372,17 @@ button.media-frame { cursor: zoom-in; }
 /* Local decision controls share the extension and file-app layout. */
 .ai-controls { margin: 12px 0; min-width: 0; }
 .ai-controls .actions { flex-wrap: wrap; }
+.nav-item .ai-nav-status { color: var(--focus); white-space: nowrap; }
+.nav-item .ai-nav-status:not(:empty) { display: inline; }
+.ai-page h2, .local-layout .panel.ai-page h2 { margin-top: 0; }
+.ai-target { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 22px 0; }
+.ai-target > div { min-width: 0; }
+.ai-target dt { color: var(--muted); font-size: 11px; }
+.ai-target dd { margin: 7px 0 0; font-size: 13px; overflow-wrap: anywhere; }
+.ai-target select { margin-top: 0; font-size: 12px; }
+.ai-page .ai-page-links { margin-top: 0; }
+.ai-page-links button { font-size: 12px; }
+.ai-page-run { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 8px; min-width: 0; }
 .ai-progress, .ai-connection { overflow-wrap: anywhere; }
 .ai-settings h2, .local-layout .panel.ai-settings h2 { margin: 0 0 8px; }
 .ai-settings .ai-intro { margin-bottom: 22px; }
@@ -393,6 +404,7 @@ button.media-frame { cursor: zoom-in; }
 .ai-settings .ai-session { margin: 14px 0 0; font-size: 11px; }
 .ai-settings-footer .error { margin: 14px 0 0; }
 @media (max-width: 640px) {
+  .ai-target { grid-template-columns: minmax(0, 1fr); }
   .ai-connection-fields, .ai-threshold { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .ai-threshold input { max-width: 190px; }
 }

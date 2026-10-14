@@ -1,5 +1,6 @@
 // Japanese source messages are stable keys. User content never enters this catalog.
 export const english = {
+  '自動マーク': 'Auto-mark',
   '対象を確認中…': 'Checking the current page…', '対象を再確認': 'Check current page again',
   '拡張とXのタブを再読み込みしてから、もう一度確認してください': 'Reload the extension and the X tab, then check the page again',
   '{count}件を{files}ファイルに分割しました。すべて保存してください。': 'Split {count} posts into {files} files. Save every file.',
