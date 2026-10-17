@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { likesScript, viewerBackup } from '../viewer-fixtures';
+import { apiResponse } from '../x-api-fixtures';
 import type { LocalLibrary } from '../../src/local-data';
 
 const url = pathToFileURL(resolve('local-dist/xbookmarkshelf-local.html')).href;
@@ -33,6 +34,87 @@ async function add(page: Page, text: string, name = 'synthetic-like.js') {
 async function savedText(page: Page) { return page.evaluate(() => (window as unknown as { syntheticFile: { contents: string } }).syntheticFile.contents); }
 async function state(page: Page, values: object) { await page.evaluate(values => Object.assign((window as unknown as { syntheticFile: object }).syntheticFile, values), values); }
 async function backup(page: Page) { await page.getByRole('button', { name: 'バックアップ・取り込み', exact: true }).click(); }
+async function selectApiFiles(page: Page, files = [apiResponse()]) {
+  await expect(page.locator('.local-save')).toBeEnabled();
+  await page.locator('input[multiple]').setInputFiles(files.map((raw, i) => ({ name: `synthetic-api-${i}.json`, mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(raw)) })));
+  const dialog = page.getByRole('dialog', { name: 'X API v2 JSONの取り込み', exact: true }); await expect(dialog).toBeVisible(); return dialog;
+}
+test('API JSON pages merge into the selected existing account, preserve organization, save and reopen offline', async ({ page, context }) => {
+  await context.setOffline(true); const requests: string[] = []; page.on('request', r => { if (/^https?:/.test(r.url())) requests.push(r.url()); });
+  await start(page); await add(page, JSON.stringify(viewerBackup()), 'synthetic-backup.json');
+  const dialog = await selectApiFiles(page, [apiResponse(['1', '3']), apiResponse(['3', '4'])]);
+  await expect(dialog.getByRole('button', { name: '取り込む', exact: true })).toBeDisabled();
+  await expect(page.locator('.local-save')).toBeDisabled();
+  await dialog.getByLabel('保存するアカウント', { exact: true }).selectOption('account:a');
+  await expect(dialog).toContainText('新規 2 · 既存・重複 2');
+  await dialog.getByRole('button', { name: '取り込む', exact: true }).click(); await expect(dialog).toHaveCount(0);
+  await expect(page.locator('.card-grid .post-card')).toHaveCount(5);
+  const old = page.locator('[data-post-key="a:1"]'); await expect(old.getByRole('button', { name: '資料のマーク', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(old.getByRole('button', { name: '未読に戻す', exact: true })).toBeVisible(); await expect(old).toContainText('API synthetic');
+  await page.getByRole('button', { name: '保存', exact: true }).click(); await expect(page.locator('.local-file-bar')).toContainText('保存済み');
+  const saved = JSON.parse(await savedText(page)) as LocalLibrary;
+  expect(saved.libraries.bookmarks.posts.find(p => p.accountId === 'a' && p.postId === '1')).toMatchObject({ read: true, favorite: true, tagIds: ['mark-a', 'tag-a'] });
+  expect(saved.libraries.bookmarks.posts.find(p => p.accountId === 'a' && p.postId === '3')).toMatchObject({ media: [{ kind: 'image', url: 'https://pbs.twimg.com/media/api-photo.jpg' }, { kind: 'video', url: 'https://pbs.twimg.com/ext_tw_video_thumb/api-video.jpg' }], quote: { text: 'Synthetic quoted text' } });
+  await page.getByRole('button', { name: '管理JSONを開く', exact: true }).click(); await expect(page.locator('.card-grid .post-card')).toHaveCount(5);
+  const again = await selectApiFiles(page); await again.getByLabel('保存するアカウント', { exact: true }).selectOption('account:a'); await expect(again).toContainText('新規 0');
+  await again.getByRole('button', { name: '取り込む', exact: true }).click(); await expect(page.locator('.card-grid .post-card')).toHaveCount(5);
+  expect(requests).toEqual([]); expect(await page.evaluate(() => (window as unknown as { syntheticStorageCalls: string[] }).syntheticStorageCalls)).toEqual([]);
+});
+test('API source/new owner choices stay separate and the likes archive can retain its marks when enriched', async ({ page, context }) => {
+  await context.setOffline(true); await start(page);
+  const archive = [{ like: { tweetId: '1', fullText: 'Short', expandedUrl: 'https://x.com/i/status/1' } }];
+  await add(page, JSON.stringify(archive), 'synthetic-like.json');
+  await page.getByRole('button', { name: 'マークを管理', exact: true }).click(); await page.getByLabel('マークの名前', { exact: true }).fill('Keep'); await page.getByRole('button', { name: 'マークを保存', exact: true }).click();
+  await page.getByRole('button', { name: /^すべてのいいね/ }).click(); const card = page.locator('.card-grid .post-card');
+  await card.getByRole('button', { name: 'Keepのマーク', exact: true }).click(); await card.getByRole('button', { name: '既読にする', exact: true }).click();
+  let dialog = await selectApiFiles(page, [apiResponse(['1'])]); await dialog.getByLabel('保存するアカウント', { exact: true }).selectOption('account:likes');
+  await dialog.getByRole('button', { name: '取り込む', exact: true }).click(); await expect(card).toHaveCount(1); await expect(card).toContainText('Synthetic author');
+  await expect(card.getByRole('button', { name: 'Keepのマーク', exact: true })).toHaveAttribute('aria-pressed', 'true'); await expect(card.getByRole('button', { name: '未読に戻す', exact: true })).toBeVisible();
+  dialog = await selectApiFiles(page, [apiResponse(['1'])]); await dialog.getByLabel('取り込み先', { exact: true }).selectOption('bookmarks');
+  await expect(dialog.getByLabel('保存するアカウント', { exact: true })).toHaveValue('');
+  await dialog.getByLabel('保存するアカウント', { exact: true }).selectOption('new'); await dialog.getByLabel('自分のXユーザー名', { exact: true }).fill('@Ｓａｍｐｌｅ_A');
+  await expect(dialog).toContainText('新規 1'); await dialog.getByRole('button', { name: '取り込む', exact: true }).click();
+  dialog = await selectApiFiles(page, [apiResponse(['1'])]); await dialog.getByLabel('保存するアカウント', { exact: true }).selectOption('new'); await dialog.getByLabel('自分のXユーザー名', { exact: true }).fill('@Sample_A');
+  await expect(dialog).toContainText('新規 0'); await dialog.getByRole('button', { name: '取り込む', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click(); await expect(page.locator('.local-file-bar')).toContainText('保存済み');
+  const saved = JSON.parse(await savedText(page)) as LocalLibrary;
+  expect(saved.libraries.bookmarks.accounts).toHaveLength(1); expect(saved.libraries.bookmarks.accounts[0]!.handle).toBe('sample_a');
+  expect(saved.libraries.bookmarks.posts).toHaveLength(1); expect(saved.libraries.likes.posts).toHaveLength(1); expect(saved.libraries.likes.posts[0]!.read).toBe(true);
+});
+test('API cancel and malformed later files do not change the library; mixed formats commit together only after confirmation', async ({ page, context }) => {
+  await context.setOffline(true); await start(page); await add(page, JSON.stringify(viewerBackup()), 'synthetic-backup.json');
+  await page.getByRole('button', { name: '保存', exact: true }).click(); await expect(page.locator('.local-file-bar')).toContainText('保存済み'); const before = await savedText(page);
+  const dialog = await selectApiFiles(page); await dialog.getByLabel('保存するアカウント', { exact: true }).selectOption('account:a'); await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0); await expect(page.locator('.local-file-bar')).toContainText('保存済み'); await expect(page.locator('.card-grid .post-card')).toHaveCount(3);
+  await page.locator('input[multiple]').setInputFiles([
+    { name: 'synthetic-api.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(apiResponse())) },
+    { name: 'synthetic-invalid.json', mimeType: 'application/json', buffer: Buffer.from('{"data":[{"id":123,"text":"bad"}]}') },
+  ]);
+  await expect(page.getByRole('alert')).toContainText('X API v2'); await expect(page.getByRole('dialog')).toHaveCount(0); await expect(page.locator('.card-grid .post-card')).toHaveCount(3);
+  await page.getByRole('button', { name: '保存', exact: true }).click(); await expect(page.locator('.local-file-bar')).toContainText('保存済み'); await expect(page.locator('.local-save')).toBeEnabled(); expect(await savedText(page)).toBe(before);
+  await page.locator('input[multiple]').setInputFiles([
+    { name: 'synthetic-api.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(apiResponse(['3']))) },
+    { name: 'synthetic-like.js', mimeType: 'text/javascript', buffer: Buffer.from(likesScript()) },
+  ]);
+  const mixed = page.getByRole('dialog'); await expect(mixed).toContainText('API以外のファイル'); await mixed.getByLabel('保存するアカウント', { exact: true }).selectOption('account:a');
+  await expect(mixed).toContainText('新規 2'); await mixed.getByRole('button', { name: '取り込む', exact: true }).click();
+  await expect(page.locator('.card-grid .post-card')).toHaveCount(4); await page.getByRole('button', { name: 'いいね', exact: true }).click(); await expect(page.locator('.card-grid .post-card')).toHaveCount(1);
+});
+test('API import explains missing authors and stays usable in English at mobile width with long untrusted filenames', async ({ page, context }) => {
+  await context.setOffline(true); await page.setViewportSize({ width: 390, height: 844 }); await start(page); await page.getByRole('button', { name: '新しく作る', exact: true }).click();
+  await page.getByRole('button', { name: '設定', exact: true }).click(); await page.getByLabel('言語', { exact: true }).selectOption('en');
+  const name = `${'untrusted_'.repeat(35)}<img src=x onerror=alert(1)>.json`;
+  await page.locator('input[multiple]').setInputFiles({ name, mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ data: [{ id: '1', text: '<script>alert(1)</script>' }] })) });
+  const dialog = page.getByRole('dialog', { name: 'Import X API v2 JSON', exact: true }); await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Library account', { exact: true }).selectOption('new'); await dialog.getByLabel('Your X username', { exact: true }).fill('owner');
+  await expect(dialog.getByRole('alert')).toContainText('Bookmarks require author usernames'); await expect(dialog.getByRole('button', { name: 'Import files', exact: true })).toBeDisabled();
+  await dialog.getByLabel('Import into', { exact: true }).selectOption('likes'); await dialog.getByLabel('Library account', { exact: true }).selectOption('account:likes');
+  await expect(dialog).toContainText('Unknown authors 1'); await dialog.getByText('Selected files', { exact: false }).click();
+  await expect(dialog).toContainText(name); expect(await dialog.evaluate(d => d.scrollWidth <= d.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); await expect(page.locator('img[src="x"]')).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Import files', exact: true }).click(); await expect(page.locator('.post-card')).toContainText('<script>alert(1)</script>');
+  expect(await page.locator('.post-card script').count()).toBe(0);
+});
 test('20,838 likes stay off browser storage, search/scroll offline and separate unknown media', async ({ page, context }) => {
   await context.setOffline(true); const requests: string[] = []; page.on('request', r => { if (/^https?:/.test(r.url())) requests.push(r.url()); });
   await start(page); await add(page, likesScript(20838)); await expect(page.getByRole('heading', { name: 'すべてのいいね', exact: true })).toBeVisible();

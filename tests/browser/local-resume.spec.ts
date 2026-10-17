@@ -44,7 +44,7 @@ async function nativeStart(page: Page, permission: PermissionState = 'granted') 
 }
 test('welcome actions are centered with no top-right duplicates; file:// preview ON/OFF survives reload', async ({ page }) => {
   await page.goto(fileUrl); const welcome = page.locator('.viewer-welcome'); await expect(welcome.getByRole('button', { name: '新しく作る' })).toBeEnabled();
-  await expect(page.locator('.local-file-bar')).toHaveCount(0); await expect(page.locator('.topbar')).toHaveCount(0); await expect(welcome.locator('p')).toHaveText('管理JSONを開くか新しく作成してください。Xのlike.jsや拡張の投稿バックアップを追加できます。');
+  await expect(page.locator('.local-file-bar')).toHaveCount(0); await expect(page.locator('.topbar')).toHaveCount(0); await expect(welcome.locator('p')).toHaveText('管理JSONを開くか新しく作成してください。X API v2のJSON、like.js、拡張の投稿バックアップを追加できます。');
   const center = await welcome.evaluate(element => { const buttons = element.querySelector('.actions')!; const box = element.getBoundingClientRect(); const children = [...buttons.children].map(e => e.getBoundingClientRect()); return Math.abs((children[0]!.left + children.at(-1)!.right) / 2 - (box.left + box.right) / 2); }); expect(center).toBeLessThan(2);
   await welcome.getByRole('button', { name: '新しく作る' }).click(); await page.getByRole('checkbox', { name: '画像プレビュー', exact: true }).check();
   await expect.poll(async () => (await metadata(page)).values).toEqual([true]); page.once('dialog', d => d.accept()); await page.reload();

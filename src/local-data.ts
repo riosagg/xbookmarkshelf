@@ -17,7 +17,7 @@ export interface LocalLibrary {
   format: 'xbookmarkshelf-local'; formatVersion: 1; updatedAt: string;
   libraries: Record<LocalSource, LocalCollection>; settings: LocalSettings;
 }
-export type LocalError = 'format' | 'size' | 'records' | 'marks' | 'tags' | 'empty' | 'conflict' | 'save' | 'parts';
+export type LocalError = 'format' | 'size' | 'records' | 'marks' | 'tags' | 'empty' | 'conflict' | 'save' | 'parts' | 'apiFormat' | 'apiAuthor';
 export class LocalDataError extends Error { constructor(readonly code: LocalError) { super(code); } }
 function fail(code: LocalError = 'records'): never { throw new LocalDataError(code); }
 const id = (v: unknown): v is string => typeof v === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(v);
@@ -128,10 +128,9 @@ function fromBackup(b: CollectionBackup): LocalCollection {
     read: states.get(key(p))?.read ?? false, favorite: states.get(key(p))?.favorite ?? false, tagIds: assigned.get(key(p)) ?? [] })) };
 }
 export interface LocalImport { backup?: CollectionBackup; collections: Partial<Record<LocalSource, LocalCollection>>; source: LocalSource; duplicates: number }
-export function parseLocalImport(text: string): LocalImport {
+export function parseLocalImport(text: string, raw?: unknown): LocalImport {
   if (text.length > LOCAL_MAX_BYTES || new TextEncoder().encode(text).length > LOCAL_MAX_BYTES) fail('size');
-  let raw: unknown;
-  try { raw = JSON.parse(text.replace(/^\uFEFF/, '')); } catch { /* A like.js wrapper is handled by the pure parser. */ }
+  if (raw === undefined) try { raw = JSON.parse(text.replace(/^\uFEFF/, '')); } catch { /* A like.js wrapper is handled by the pure parser. */ }
   if (raw && (raw as { format?: string }).format === 'xbookmarkshelf-local') {
     const lib = validateLocalLibrary(raw); return { collections: lib.libraries, source: lib.libraries.bookmarks.posts.length ? 'bookmarks' : 'likes', duplicates: 0 };
   }
@@ -199,6 +198,16 @@ export function mergeLocalImport(lib: LocalLibrary, input: LocalImport) {
   }
   const library = validateLocalLibrary({ ...lib, libraries, updatedAt: new Date().toISOString() });
   serializeLocalLibrary(library); return { library, added, existing, source: input.source };
+}
+// All work is on new objects. The caller commits only after the entire batch succeeds.
+export function mergeLocalImports(lib: LocalLibrary, inputs: readonly LocalImport[]) {
+  verifyLocalImportParts(inputs);
+  let library = lib; let added = 0; let existing = 0; let source: LocalSource = 'bookmarks';
+  for (const input of inputs) {
+    const result = mergeLocalImport(library, input);
+    library = result.library; added += result.added; existing += result.existing; source = result.source;
+  }
+  return { library, added, existing, source };
 }
 export function editLocalCollection(lib: LocalLibrary, source: LocalSource, edit: (c: LocalCollection) => LocalCollection): LocalLibrary {
   return { ...lib, libraries: { ...lib.libraries, [source]: edit(lib.libraries[source]) }, updatedAt: new Date().toISOString() };
