@@ -2,6 +2,11 @@
 
 English | [日本語](CHANGELOG.ja.md)
 
+## Unreleased
+
+- Import X API v2 list-response JSON in the local library. Choose Bookmarks or Likes and the owning account, and import multiple pages together.
+- Keep existing marks, tags and read status while supplementing text, authors, images, video covers and quotes from the JSON. No API connection or key storage is required.
+
 ## v0.1.1
 
 - Add optional LM Studio/d1 auto-marking during extension imports, for saved posts in an account scope, and from local search results. Preserve existing marks and leave unmatched posts unchanged.

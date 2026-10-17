@@ -88,11 +88,15 @@ Delete selected posts from the list, or delete all posts in the current library 
 Open `xbookmarkshelf-local.html` in desktop Chrome. The HTML file is the app; a separate library JSON file stores your posts. No extension or server is required.
 
 1. Start with "Create library" or "Open library JSON".
-2. Use "Add import" to select `data/like.js` from an X archive, an extension post backup, or a library JSON. Select every part of a split backup together.
+2. Use "Add import" to select X API v2 JSON, `data/like.js` from an X archive, an extension post backup, or a library JSON. You can select multiple files. Select every part of a split backup together.
 3. Search and organize posts as you would in the extension. Click "Save" to write the library JSON after importing or editing.
 4. On your next visit, the app can reopen the previous library JSON. If file access needs permission again, click "Open".
 
-The local library supports up to 200,000 posts in total and a library JSON of up to 512 MiB. Source like.js files and post backups are limited to 20 MiB per file. It uses memory while open. The browser remembers only the selected file reference and your image preview preference.
+For X API v2 JSON, select a list response containing a `data` array, then choose Bookmarks or Likes and the owning account. Select an existing account or add your own X username, separately from the post author's username. Select multiple pages from the same source and account together, review the counts, and confirm the import. Import files from different accounts or sources separately.
+
+No API key or connection to X is needed. Text, authors, posting dates, images, video covers, and quotes use only information present in the JSON. Bookmarks require author usernames: include `author_id` and `includes.users` with `username`. Images require `attachments.media_keys` and `includes.media`. Missing information and further pages are not fetched. Existing marks, tags, read status, and display settings are kept. To enrich posts previously imported from like.js, select "Likes archive".
+
+The local library supports up to 200,000 posts in total and a library JSON of up to 512 MiB. Source API JSON, like.js, and post backups are limited to 20 MiB and 50,000 posts per file, with at most 512 MiB selected per batch. It uses memory while open. The browser remembers only the selected file reference and your image preview preference.
 
 Back up the entire library, Bookmarks or Likes, or one mark. Bookmarks can also be exported as post JSON for the extension. Display settings are included in the library JSON. Sort by file order, reverse order, or posting date.
 

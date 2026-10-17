@@ -2,7 +2,7 @@
 
 English | [日本語](PRIVACY.ja.md)
 
-Last updated: October 14, 2026
+Last updated: October 15, 2026
 
 This policy covers the Chrome extension and local library app, version 0.1.1.
 
@@ -24,6 +24,8 @@ Saved data remains in your browser profile or files until you remove it. Deletin
 - Local library: clicking "Save" writes posts and settings to a library JSON file on your computer.
 
 The local app keeps only two things in browser storage: the selected file reference for reopening and your image preview preference.
+
+The local app can also convert and add X API v2 JSON files you select on your computer. This does not require an API key or contact the X API. Credentials and raw API error messages in the JSON are not included in saved data. You choose the destination library and account before confirming, then click Save to write the changes to your library file.
 
 ## Network connections
 

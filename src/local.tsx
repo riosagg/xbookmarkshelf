@@ -9,7 +9,7 @@ import { BrandMark } from './brand';
 import { orderedMarks } from './model';
 import { PostCard, Detail } from './file-post-ui';
 import { filterViewerPosts, EMPTY_VIEWER_FILTERS, VIEWER_MAX_BYTES, type ViewerFilters, type ViewerPost } from './viewer-data';
-import { emptyLocalLibrary, parseLocalLibrary, parseLocalImport, mergeLocalImport, localView, localCount, serializeLocalLibrary, localBackup, localBookmarksBackup, verifyLocalImportParts,
+import { emptyLocalLibrary, parseLocalLibrary, parseLocalImport, mergeLocalImports, localView, localCount, serializeLocalLibrary, localBackup, localBookmarksBackup,
   setLocalRead, toggleLocalMark, LOCAL_MAX_BYTES, LocalDataError, type LocalLibrary, type LocalSource, type LocalSettings } from './local-data';
 import { pickers, filePickerTypes, openLocalFile, newLocalTarget, saveLocalFile, downloadLocalText, type LocalFileTarget, type LocalFileHandle } from './local-files';
 import { loadLocalSession, rememberLocalFile, rememberLocalPreviews, resumeLocalFile } from './local-session';
@@ -17,7 +17,8 @@ import { localText, localSymbolText, type LocalTranslate, type LocalMessage } fr
 import { LocalQuickMarks, LocalMarkManager } from './local-marks-ui';
 import { prepareBackupFiles, downloadBackupFile, type BackupFile } from './backup-parts';
 import { BackupDownloads } from './backup-downloads';
-import type { LocalImport } from './local-data';
+import { LocalApiImport, type PendingApiImport, type LocalImportResult } from './local-api-import';
+import { parseXApiPage } from './x-api-import';
 import type { ViewerLanguage } from './viewer-messages';
 import { PostFeed, usePostFeed } from './post-feed';
 
@@ -34,6 +35,7 @@ function App() {
   const [filename, setFilename] = useState(''); const [bytes, setBytes] = useState<number | null>(null);
   const [exportFiles, setExportFiles] = useState<BackupFile[]>([]);
   const [error, setError] = useState<LocalMessage | null>(null); const [notice, setNotice] = useState('');
+  const [pendingImport, setPendingImport] = useState<PendingApiImport | null>(null);
   const [fallbackSettings, setFallbackSettings] = useState(emptyLocalLibrary().settings); const settings = lib?.settings ?? fallbackSettings;
   const [systemLang, setSystemLang] = useState(systemLanguage); const language = settings.language === 'system' ? systemLang : settings.language;
   const tr: LocalTranslate = key => localText(key, language); const locale = language === 'ja' ? 'ja-JP' : 'en-US';
@@ -122,15 +124,24 @@ function App() {
   async function importFiles(files: File[]) {
     if (importInput.current) importInput.current.value = ''; if (!files.length || busyRef.current) return;
     setWorking(true); setError(null); setNotice('');
+    let awaitingChoice = false;
     try {
-      let next = library.current ?? emptyLocalLibrary(); let added = 0; let existing = 0; let active = source; const imports: LocalImport[] = [];
+      const pending: PendingApiImport = { pages: [], imports: [], names: files.map(f => f.name) }; let totalBytes = 0;
       await new Promise<void>(r => requestAnimationFrame(() => setTimeout(r, 0)));
       for (const file of files) {
-        if (file.size > LOCAL_MAX_BYTES) throw new LocalDataError('size');
-        const input = parseLocalImport(await file.text()); imports.push(input); const result = mergeLocalImport(next, input); next = result.library; added += result.added; existing += result.existing; active = result.source;
+        totalBytes += file.size; if (file.size > LOCAL_MAX_BYTES || totalBytes > LOCAL_MAX_BYTES) throw new LocalDataError('size');
+        const text = await file.text(); let raw: unknown = null;
+        try { raw = JSON.parse(text.replace(/^\uFEFF/, '')); } catch { /* like.js wrappers use the archive parser. */ }
+        const page = parseXApiPage(text, raw);
+        if (page) pending.pages.push(page); else pending.imports.push(parseLocalImport(text, raw));
       }
-      verifyLocalImportParts(imports); commit(next); switchSource(active); setNotice(`${tr('imported')} · ${tr('added')} ${added.toLocaleString(locale)} · ${tr('existing')} ${existing.toLocaleString(locale)}`);
-    } catch (e) { report(e); } finally { setWorking(false); }
+      if (pending.pages.length) { setPendingImport(pending); awaitingChoice = true; }
+      else finishImport(mergeLocalImports(library.current ?? emptyLocalLibrary(), pending.imports));
+    } catch (e) { report(e); } finally { if (!awaitingChoice) setWorking(false); }
+  }
+  function finishImport(result: LocalImportResult) {
+    commit(result.library); switchSource(result.source); setPendingImport(null); setWorking(false);
+    setNotice(`${tr('imported')} · ${tr('added')} ${result.added.toLocaleString(locale)} · ${tr('existing')} ${result.existing.toLocaleString(locale)}`);
   }
   async function save(as = false) {
     const snapshot = library.current; if (!snapshot || busyRef.current) return;
@@ -200,7 +211,7 @@ function App() {
       <input ref={importInput} hidden type="file" multiple accept=".json,.js,application/json,text/javascript" aria-label={tr('import')} onChange={e => void importFiles(Array.from(e.currentTarget.files ?? []))}/>
       <input ref={openInput} hidden type="file" accept=".json,application/json" aria-label={tr('openLibrary')} onChange={e => void openFallback(e.currentTarget.files?.[0])}/>
       {lib && <div class="local-file-bar"><span class="viewer-filename" title={filename}>{filename || tr('newFile')}</span><span class={dirty ? 'local-dirty' : 'muted'} role="status">{tr(dirty ? 'unsaved' : 'saved')}</span><div class="actions"><button class="small-button" disabled={busy} onClick={() => void create()}>{tr('new')}</button><button class="small-button" disabled={busy} onClick={() => void openLibrary()}>{tr('openLibrary')}</button><button class="small-button" disabled={busy} onClick={() => void save(true)}>{tr('saveAs')}</button></div></div>}
-      {error && <p class="error" role="alert">{tr(error)}</p>}{busy && !aiAbort.current && <p class="notice" role="status">{tr('working')}</p>}{notice && <div class="notice local-notice"><span role="status">{notice}</span><button type="button" class="icon-button" aria-label={tr('dismissNotice')} title={tr('dismissNotice')} onClick={() => setNotice('')}><Icon name="close"/></button></div>}
+      {error && <p class="error" role="alert">{tr(error)}</p>}{busy && !pendingImport && !aiAbort.current && <p class="notice" role="status">{tr('working')}</p>}{notice && <div class="notice local-notice"><span role="status">{notice}</span><button type="button" class="icon-button" aria-label={tr('dismissNotice')} title={tr('dismissNotice')} onClick={() => setNotice('')}><Icon name="close"/></button></div>}
       {!lib ? <section class="empty viewer-welcome"><span class="empty-icon"><Icon name="archive"/></span><h1>{tr('localTitle')}</h1><p>{tr('welcome')}</p>
         {remembered ? <><p class="local-remembered-file" title={remembered.name}>{remembered.name}</p><div class="actions"><button class="primary" disabled={busy} onClick={() => void reopen()}>{tr('resume')}</button><button disabled={busy} onClick={() => void openLibrary()}>{tr('otherFile')}</button></div><div class="actions local-welcome-secondary"><button class="text-button" disabled={busy} onClick={() => void create()}>{tr('new')}</button><button class="text-button" disabled={busy} onClick={() => void forget()}>{tr('forget')}</button></div></>
         : <div class="actions"><button class="primary" disabled={busy} onClick={() => void create()}>{tr('new')}</button><button disabled={busy} onClick={() => void openLibrary()}>{tr('openLibrary')}</button></div>}
@@ -242,6 +253,7 @@ function App() {
       </>}
     </main></div>
     {detail && lib && <Detail key={`${source}:${detail.key}`} post={detail} initialIndex={detailMediaIndex} previews={previews} tr={tr} locale={locale} close={() => setDetailKey(null)} tag={chooseTag} actions={actions(detail)} readAction={readAction(detail)} annotation={annotation(detail)}/>}
+    {pendingImport && <LocalApiImport library={lib ?? emptyLocalLibrary()} pending={pendingImport} initialSource={source} tr={tr} cancel={() => { setPendingImport(null); setWorking(false); }} complete={finishImport}/>}
   </div>;
 }
 render(<App/>, document.getElementById('app')!);

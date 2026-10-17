@@ -39,3 +39,14 @@
   .local-file-bar .actions { margin-left: 0; }
 }
 .local-layout input[hidden] { display: none; }
+.local-api-import { width: min(620px, calc(100vw - 32px)); }
+.local-api-body { padding: 4px 20px 20px; }
+.local-api-body p, .local-api-files li { overflow-wrap: anywhere; }
+.local-api-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 20px 0; }
+.local-api-body label { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.local-api-body select, .local-api-body input { width: 100%; min-width: 0; }
+.local-api-files { margin: 16px 0; }
+.local-api-files ul { padding-inline-start: 20px; max-height: 120px; overflow: auto; }
+.local-api-preview { margin: 20px 0; }
+.local-api-actions { justify-content: flex-end; }
+@media (max-width: 480px) { .local-api-fields { grid-template-columns: minmax(0, 1fr); } }
