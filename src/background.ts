@@ -71,11 +71,13 @@ async function start(message: Record<string, unknown>, source: LibrarySource) {
     const run = newRun(account, tabId, identity.documentId, options, source);
     run.importLocations = locations;
     await store.importRuns.add(run);
+    let startError = '読み取りを開始できません';
     try {
       if (aiConfig) { await createAiJob(store, aiConfig, { runId: run.id }); await wakeAiJobs(); }
       const result = await chrome.tabs.sendMessage(tabId, { type: 'READ', run }, { documentId: run.documentId });
+      if (result?.reason === 'no_visible_posts') startError = '画面内に取り込める投稿がありません。Xの一覧で投稿を表示してください';
       if (!result?.started) throw new Error('読み取りを開始できません');
-    } catch { await finishRun(run.id, 'error', store); throw new Error('読み取りを開始できません'); }
+    } catch { await finishRun(run.id, 'error', store); throw new Error(startError); }
     return run;
   } finally { release(); }
 }

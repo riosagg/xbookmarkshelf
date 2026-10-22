@@ -1,5 +1,5 @@
 import { webUrl } from './text';
-export type Mode = 'full' | 'delta';
+export type Mode = 'visible' | 'delta' | 'full'; // full remains valid for legacy runs.
 export type LibrarySource = 'bookmarks' | 'likes';
 export function isLibrarySource(value: unknown): value is LibrarySource { return value === 'bookmarks' || value === 'likes'; }
 export interface LinkCard { url: string; title: string; imageUrl: string }
@@ -64,7 +64,7 @@ export interface ImportRun extends ImportOptions {
   importedPostIds?: string[]; // Exact committed membership for post-import classification.
 }
 export const BATCH_SIZE = 10;
-export const DEFAULT_OPTIONS: ImportOptions = { intervalMs: 3000, maxPosts: 100, mode: 'full' };
+export const DEFAULT_OPTIONS: ImportOptions = { intervalMs: 3000, maxPosts: 100, mode: 'visible' };
 export const REASON_LABELS = {
   manual_stop: '手動で停止しました', user_pause: '一時停止しました', run_limit: '実行を完了しました',
   known_threshold: '既知の投稿が30件続いたため終了しました（推定）', estimated_end: '追加の投稿を確認できなかったため終了しました（推定）',
@@ -142,7 +142,7 @@ export function librarySourceUrl(source: LibrarySource, handle?: unknown): strin
 export function validateOptions(value: unknown): ImportOptions {
   const v = value as ImportOptions;
   if (!v || !Number.isInteger(v.intervalMs) || v.intervalMs < 3000 || v.intervalMs > 30000 ||
-      !Number.isInteger(v.maxPosts) || v.maxPosts < 10 || v.maxPosts > 1000 || !['full', 'delta'].includes(v.mode)) throw new Error('設定値が範囲外です');
+      !Number.isInteger(v.maxPosts) || v.maxPosts < 10 || v.maxPosts > 1000 || !['visible', 'full', 'delta'].includes(v.mode)) throw new Error('設定値が範囲外です');
   if (v.intervalMaxMs !== undefined && (!Number.isInteger(v.intervalMaxMs) || v.intervalMaxMs < v.intervalMs || v.intervalMaxMs > 30000)) throw new Error('最長の待機は最短以上、30秒以下にしてください');
   return { intervalMs: v.intervalMs, ...(v.intervalMaxMs === undefined ? {} : { intervalMaxMs: v.intervalMaxMs }), maxPosts: v.maxPosts, mode: v.mode };
 }

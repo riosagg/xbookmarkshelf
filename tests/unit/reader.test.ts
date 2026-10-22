@@ -74,6 +74,19 @@ it('reports an estimated end after ten empty observations', async () => {
   await runReader(run, adapter, new AbortController().signal);
   expect(adapter.heartbeat).toHaveBeenCalledTimes(10); expect(adapter.finish).toHaveBeenCalledWith('estimated_end');
 });
+it('waits for a top reset to render before collecting legacy full or delta, without adding another wait', async () => {
+  for (const mode of ['full', 'delta'] as const) {
+    const run = { ...initial(), mode }; let visible = [observation('99')]; let notify = () => {};
+    const adapter: ReaderPort = { ...port(run), observe: () => visible,
+      watch: collect => { notify = collect; return () => {}; },
+      wait: vi.fn(async () => { notify(); visible = [observation('1')]; notify(); }),
+      commit: vi.fn<ReaderPort['commit']>(async () => ({ ...run, nextSequence: 1, observed: 1, state: 'stopped' })), scroll: vi.fn() };
+    await runReader(run, adapter, new AbortController().signal);
+    expect(adapter.wait).toHaveBeenCalledExactlyOnceWith(3000);
+    expect(adapter.commit).toHaveBeenCalledWith(0, [expect.objectContaining({ postId: '1' })]);
+    expect(adapter.scroll).not.toHaveBeenCalled();
+  }
+});
 it('stops on account/page/visibility restriction before reading', async () => {
   const run = initial(); const adapter = { ...port(run), guard: () => 'account_changed' as const, observe: vi.fn(), finish: vi.fn() };
   await runReader(run, adapter, new AbortController().signal); expect(adapter.observe).not.toHaveBeenCalled(); expect(adapter.finish).toHaveBeenCalledWith('account_changed');

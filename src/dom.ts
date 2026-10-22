@@ -92,6 +92,12 @@ export function readAccount(document: Document): string | null {
   const handle = xPath(href)?.match(/^\/([a-zA-Z0-9_]{1,15})\/?$/)?.[1];
   return handle && validHandle(handle) ? handle.toLowerCase() : null;
 }
+export function readVisiblePosts(document: Document, width: number, height: number): ObservedPost[] {
+  return Array.from(document.querySelectorAll('article[data-testid="tweet"]')).filter(article => {
+    const rect = article.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < height && rect.right > 0 && rect.left < width;
+  }).map(article => readArticle(article)).filter(post => post !== null);
+}
 export function readArticle(article: Element, now = new Date().toISOString()): ObservedPost | null {
   const time = ownElements(article, 'time')[0];
   const href = time?.closest('a')?.getAttribute('href');

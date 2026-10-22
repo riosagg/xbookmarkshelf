@@ -185,6 +185,7 @@ for (const { path, collection } of [{ path: '/i/bookmarks', collection: 'bookmar
       await popup.getByLabel('待機方法').selectOption('random');
       await popup.getByLabel('最長（秒）').fill('4');
       await popup.getByLabel('今回の上限（件）').fill('10');
+      await popup.getByLabel('取り込み範囲').selectOption('delta');
       await expect(popup.locator('.primary.full')).toBeEnabled();
       // Keep the fixture X tab visible while exercising the popup's real start handler.
       await source.bringToFront();
@@ -200,5 +201,67 @@ for (const { path, collection } of [{ path: '/i/bookmarks', collection: 'bookmar
       await expect(popup.getByLabel('最長（秒）')).toHaveValue('4');
       await expect(popup.getByLabel('今回の上限（件）')).toHaveValue('10');
     }
+  } finally { await context.close(); await rm(temp, { recursive: true, force: true }); }
+});
+
+for (const collection of ['bookmarks', 'likes'] as const) test(`MV3 imports from the visible position on ${collection}, continues and keeps delta at the top`, async () => {
+  test.setTimeout(60000);
+  const temp = await mkdtemp(join(tmpdir(), 'xbs-visible-import-'));
+  const extension = join(temp, 'extension');
+  await cp(resolve('dist'), extension, { recursive: true });
+  const manifest = JSON.parse(await readFile(join(extension, 'manifest.json'), 'utf8'));
+  manifest.host_permissions = ['https://x.com/*'];
+  await writeFile(join(extension, 'manifest.json'), JSON.stringify(manifest));
+  const context = await chromium.launchPersistentContext(join(temp, 'profile'), {
+    channel: 'chromium', headless: true, viewport: { width: 900, height: 600 },
+    args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  });
+  try {
+    await context.route('https://x.com/**', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: `<!doctype html><html><head><style>
+      body{margin:0;min-height:20000px}nav{position:fixed;right:0;top:0}main{height:8000px;position:relative}article{position:absolute;height:100px;width:500px;box-sizing:border-box}
+      </style></head><body><nav><a data-testid="AppTabBar_Profile_Link" href="/synthetic_user">Profile</a></nav><main></main><script>
+      function render(){const start=Math.max(1,Math.floor(scrollY/100)-2),end=Math.min(80,start+16);document.querySelector('main').innerHTML=Array.from({length:Math.max(0,end-start+1)},(_,i)=>{const id=start+i;return '<article data-testid="tweet" style="top:'+((id-1)*100)+'px"><a href="/test_author/status/'+id+'"><time datetime="2026-10-10T08:00:00Z"></time></a><div data-testid="tweetText">Synthetic '+id+'</div></article>';}).join('');}
+      render();addEventListener('scroll',render);
+      </script></body></html>` }));
+    const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+    const extensionId = worker.url().split('/')[2]!;
+    const sourceUrl = collection === 'likes' ? 'https://x.com/synthetic_user/likes' : 'https://x.com/i/bookmarks';
+    const source = await context.newPage(); await source.goto(sourceUrl);
+    const popup = await context.newPage(); await popup.goto(`chrome-extension://${extensionId}/popup.html?source=${collection}`);
+    await source.bringToFront(); await source.evaluate(() => window.scrollTo(0, 930));
+    await expect(source.locator('article').first()).toHaveAttribute('style', 'top:600px');
+    const start = (mode: 'visible' | 'delta') => popup.evaluate(async ({ sourceUrl, collection, mode }) => {
+      const [tab] = await chrome.tabs.query({ url: sourceUrl });
+      const inspection = await chrome.runtime.sendMessage({ type: 'INSPECT_TAB', tabId: tab!.id });
+      return chrome.runtime.sendMessage({ type: 'START', tabId: tab!.id, handle: inspection.value.handle, source: collection, options: { intervalMs: 3000, maxPosts: 10, mode } });
+    }, { sourceUrl, collection, mode });
+    const status = () => popup.evaluate(async collection => (await chrome.runtime.sendMessage({ type: 'STATUS', source: collection })).value, collection);
+    const savedIds = () => popup.evaluate(async collection => {
+      const database = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open(collection === 'likes' ? 'xbookmarkshelf-likes' : 'x-bookmark-library'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+      try { return await new Promise<string[]>((resolve, reject) => { const request = database.transaction('posts').objectStore('posts').getAll(); request.onsuccess = () => resolve(request.result.map((post: { postId: string }) => post.postId).sort((a: string, b: string) => Number(a) - Number(b))); request.onerror = () => reject(request.error); }); }
+      finally { database.close(); }
+    }, collection);
+
+    expect((await start('visible')).ok).toBe(true);
+    expect(await source.evaluate(() => scrollY)).toBe(930);
+    await expect.poll(async () => (await status())?.reason, { timeout: 15000 }).toBe('run_limit');
+    expect(await savedIds()).toEqual(Array.from({ length: 10 }, (_, i) => String(i + 10)));
+    const position = await source.evaluate(() => scrollY); expect(position).toBeGreaterThan(930);
+    expect((await start('visible')).ok).toBe(true);
+    expect(await source.evaluate(() => scrollY)).toBe(position);
+    await expect.poll(async () => (await status())?.reason, { timeout: 15000 }).toBe('run_limit');
+    expect(await status()).toMatchObject({ observed: 10, added: 3, existing: 7 });
+    expect(await savedIds()).toEqual(Array.from({ length: 13 }, (_, i) => String(i + 10)));
+
+    expect((await start('delta')).ok).toBe(true);
+    expect(await source.evaluate(() => scrollY)).toBe(0);
+    await expect.poll(async () => (await status())?.reason, { timeout: 10000 }).toBe('run_limit');
+    expect((await status()).importedPostIds).toEqual(Array.from({ length: 10 }, (_, i) => String(i + 1)));
+    await source.evaluate(() => window.scrollTo(0, 10000));
+    await expect(source.locator('article')).toHaveCount(0);
+    const before = await savedIds();
+    expect(await start('visible')).toMatchObject({ ok: false, error: '画面内に取り込める投稿がありません。Xの一覧で投稿を表示してください' });
+    expect(await status()).toMatchObject({ state: 'stopped', reason: 'error', observed: 0 });
+    expect(await savedIds()).toEqual(before); expect(await source.evaluate(() => scrollY)).toBe(10000);
   } finally { await context.close(); await rm(temp, { recursive: true, force: true }); }
 });

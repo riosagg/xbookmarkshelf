@@ -1,10 +1,29 @@
 // @vitest-environment jsdom
 import { beforeEach, expect, it } from 'vitest';
-import { readAccount, readArticle, restrictedPage, bookmarkScope, libraryScope } from '../../src/dom';
+import { readAccount, readArticle, readVisiblePosts, restrictedPage, bookmarkScope, libraryScope } from '../../src/dom';
 import { isBookmarkUrl, isLibraryUrl, isMediaUrl, validateOptions, validatePosts } from '../../src/model';
 import { observation, timestamp } from './helpers';
 
 beforeEach(() => { document.body.innerHTML = ''; });
+it('reads only posts intersecting the viewport, including partial posts and excluding preloaded and hidden articles', () => {
+  const rects = [
+    { top: -120, left: 0, width: 400, height: 120 },
+    { top: -80, left: 0, width: 400, height: 120 },
+    { top: 40, left: 0, width: 400, height: 120 },
+    { top: 580, left: 0, width: 400, height: 120 },
+    { top: 600, left: 0, width: 400, height: 120 },
+    { top: 0, left: 0, width: 0, height: 0 },
+    { top: 40, left: -400, width: 400, height: 120 },
+    { top: 40, left: 800, width: 400, height: 120 },
+  ];
+  document.body.innerHTML = rects.map((_, i) => `<article data-testid="tweet"><a href="/sample/status/${i + 1}"><time></time></a></article>`).join('');
+  document.querySelectorAll('article').forEach((article, i) => {
+    const rect = rects[i]!;
+    article.getBoundingClientRect = () => ({ ...rect, bottom: rect.top + rect.height, right: rect.left + rect.width }) as DOMRect;
+  });
+  expect(readVisiblePosts(document, 800, 600).map(post => post.postId)).toEqual(['2', '3', '4']);
+  expect(readVisiblePosts(document, 0, 0)).toEqual([]);
+});
 it('uses the profile navigation to identify the logged-in account, not post authors', () => {
   document.body.innerHTML = '<a data-testid="AppTabBar_Profile_Link" href="/Logged_In">Profile</a><a href="/other">author</a>';
   expect(readAccount(document)).toBe('logged_in'); document.body.innerHTML = '<a href="/other">author</a>'; expect(readAccount(document)).toBeNull();

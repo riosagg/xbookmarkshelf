@@ -17,7 +17,7 @@ export function initialPopupSource(explicit: unknown, inspected: unknown, saved:
   return isLibrarySource(saved) ? saved : 'bookmarks';
 }
 export function popupOptions(value: PopupPreferences): ImportOptions {
-  return validateOptions({ intervalMs: value.intervalMs, ...(value.waitMode === 'random' ? { intervalMaxMs: value.intervalMaxMs } : {}), maxPosts: value.maxPosts, mode: value.mode });
+  return validateOptions({ intervalMs: value.intervalMs, ...(value.waitMode === 'random' ? { intervalMaxMs: value.intervalMaxMs } : {}), maxPosts: value.maxPosts, mode: value.mode === 'full' ? 'visible' : value.mode });
 }
 export function validatePopupPreferences(input: unknown): PopupPreferences | undefined {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return;
@@ -31,7 +31,7 @@ export function validatePopupPreferences(input: unknown): PopupPreferences | und
   } catch { return; }
 }
 export function preferencesFromOptions(source: LibrarySource, options: ImportOptions, autoMark = false): PopupPreferences {
-  return { source, intervalMs: options.intervalMs, maxPosts: options.maxPosts, mode: options.mode, waitMode: options.intervalMaxMs === undefined ? 'fixed' : 'random', intervalMaxMs: options.intervalMaxMs ?? Math.max(options.intervalMs, 6000), autoMark };
+  return { source, intervalMs: options.intervalMs, maxPosts: options.maxPosts, mode: options.mode === 'full' ? 'visible' : options.mode, waitMode: options.intervalMaxMs === undefined ? 'fixed' : 'random', intervalMaxMs: options.intervalMaxMs ?? Math.max(options.intervalMs, 6000), autoMark };
 }
 export async function loadPopupPreferences(store: LibraryDB = db): Promise<PopupPreferences | undefined> {
   return validatePopupPreferences((await store.settings.get(IMPORT_PREFERENCES_KEY))?.value);

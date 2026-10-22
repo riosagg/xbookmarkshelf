@@ -29,8 +29,9 @@ export async function runReader(initial: ImportRun, port: ReaderPort, signal: Ab
   const seen = new Set<string>();
   const queue = new Map<string, ObservedPost>();
   let overflow = false;
+  let settlingTop = initial.mode !== 'visible';
   const collect = () => {
-    if (signal.aborted || port.guard()) return;
+    if (settlingTop || signal.aborted || port.guard()) return;
     for (const p of port.observe()) {
       if (seen.has(p.postId)) continue;
       if (!queue.has(p.postId) && queue.size >= 200) { overflow = true; break; }
@@ -45,13 +46,23 @@ export async function runReader(initial: ImportRun, port: ReaderPort, signal: Ab
       const problem = port.guard();
       if (problem) { await port.finish(problem); break; }
       const intervalMs = chooseIntervalMs(run);
-      collect();
-      if (overflow) throw new Error('観測キューの上限');
       let waited = 0;
-      if (queue.size) {
-        // Allow late image/poster attributes to settle within the existing interval.
+      // A top reset can leave the old virtualized DOM until X renders again.
+      if (settlingTop) {
         waited = Math.min(intervalMs, 3000);
         await port.wait(waited);
+        if (signal.aborted) break;
+        const afterReset = port.guard();
+        if (afterReset) { await port.finish(afterReset); break; }
+        settlingTop = false;
+      }
+      collect();
+      if (overflow) throw new Error('観測キューの上限');
+      if (queue.size) {
+        // Allow late image/poster attributes to settle within the existing interval.
+        const settleMs = Math.min(intervalMs, 3000) - waited;
+        if (settleMs > 0) await port.wait(settleMs);
+        waited += settleMs;
         if (signal.aborted) break;
         const beforeSave = port.guard();
         if (beforeSave) { await port.finish(beforeSave); break; }

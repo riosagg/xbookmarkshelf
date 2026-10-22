@@ -77,7 +77,7 @@ test('real MV3 account auto-marking preserves marks and import screens show no m
   } finally { holdDecisions = false; heldResponses.splice(0).forEach(send => send()); await env.close(); }
 });
 test('20-post image import continues after popup closes and reports completion or failure without a retry button', async () => {
-  test.setTimeout(45000);
+  test.setTimeout(60000);
   importImageCounts.length = 0;
   const env = await test.step('Configure extension', () => extension(true));
   try {
@@ -99,10 +99,12 @@ test('20-post image import continues after popup closes and reports completion o
     await env.page.getByRole('button', { name: '取り込み', exact: true }).click(); await expect(env.page.locator('.ai-import-status')).toContainText('20 / 20');
     await expect(env.page.getByRole('button', { name: '今回取り込んだ投稿を自動マーク', exact: true })).toHaveCount(0);
     failDecisions = true; await resultPopup.getByLabel('今回の上限（件）').fill('20'); await resultPopup.getByLabel('取り込み中に自動マークを付ける').check(); await source.bringToFront();
+    // Revisit the same twenty posts explicitly; visible imports retain the current X position.
+    await source.evaluate(() => window.scrollTo(0, 0));
     await resultPopup.getByRole('button', { name: '少量ずつ自動取り込み', exact: true }).click();
     await expect(resultPopup.locator('.ai-import-status .error')).toContainText('接続または分類に失敗しました。');
     await expect(resultPopup.locator('.ai-import-status')).toContainText('失敗 3'); await expect(resultPopup.locator('.ai-import-status button')).toHaveCount(0);
-    await expect(resultPopup.locator('.progress strong')).toHaveText('実行を完了しました');
+    await expect(resultPopup.locator('.progress strong')).toHaveText('実行を完了しました', { timeout: 20000 });
     await expect(env.page.locator('.ai-import-status .error')).toBeVisible();
     await expect(resultPopup.getByRole('button', { name: '今回取り込んだ投稿を自動マーク', exact: true })).toHaveCount(0);
     const codeCount = await env.worker.evaluate(async () => { const d = await new Promise<IDBDatabase>(done => { const r = indexedDB.open('x-bookmark-library'); r.onsuccess = () => done(r.result); }); const rows = await new Promise<any[]>(done => { const r = d.transaction('postTags').objectStore('postTags').getAll(); r.onsuccess = () => done(r.result); }); d.close(); return rows.filter(r => r.tagId === 'code').length; });
