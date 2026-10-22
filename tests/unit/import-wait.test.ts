@@ -3,6 +3,7 @@ import { chooseIntervalMs, validateOptions, DEFAULT_OPTIONS, librarySourceUrl } 
 
 it('keeps legacy options as fixed and validates random endpoints without changing unrelated fields', () => {
   expect(validateOptions(DEFAULT_OPTIONS)).toEqual(DEFAULT_OPTIONS);
+  for (const mode of ['visible', 'delta', 'full']) expect(validateOptions({ ...DEFAULT_OPTIONS, mode }).mode).toBe(mode);
   expect(validateOptions({ ...DEFAULT_OPTIONS, intervalMaxMs: 8000, ignored: true })).toEqual({ ...DEFAULT_OPTIONS, intervalMaxMs: 8000 });
   for (const intervalMaxMs of [null, '8000', 2999, 30001, 4000.5, NaN, Infinity]) expect(() => validateOptions({ ...DEFAULT_OPTIONS, intervalMaxMs })).toThrow();
   expect(() => validateOptions({ ...DEFAULT_OPTIONS, intervalMs: 6000, intervalMaxMs: 5000 })).toThrow();

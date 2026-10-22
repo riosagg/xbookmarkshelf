@@ -1,11 +1,11 @@
-import { readAccount, readArticle, restrictedPage, libraryScope } from './dom';
+import { readAccount, readArticle, readVisiblePosts, restrictedPage, libraryScope } from './dom';
 import { type ImportRun, type StopReason, isLibrarySource } from './model';
 import { isImportPageUrl, runImportLocations } from './import-locations';
 import { runReader } from './reader';
 
 declare global { interface Window { __xBookmarkReaderVersion?: string } }
-if (window.__xBookmarkReaderVersion !== '0.1.2-import-locations') {
-  window.__xBookmarkReaderVersion = '0.1.2-import-locations';
+if (window.__xBookmarkReaderVersion !== '0.1.2-visible-import') {
+  window.__xBookmarkReaderVersion = '0.1.2-visible-import';
   let controller: AbortController | null = null;
   async function request(type: string, run: ImportRun, extra = {}) {
     const reply = await chrome.runtime.sendMessage({ type, runId: run.id, source: run.source ?? 'bookmarks', ...extra });
@@ -34,12 +34,16 @@ if (window.__xBookmarkReaderVersion !== '0.1.2-import-locations') {
       if (run.source !== undefined && !isLibrarySource(run.source)) { reply({ started: false }); return; }
       const problem = guard(run);
       if (problem) { reply({ started: false }); return; }
+      const observe = run.mode === 'visible'
+        ? () => readVisiblePosts(document, innerWidth, innerHeight)
+        : () => Array.from(document.querySelectorAll('article[data-testid="tweet"]')).map(a => readArticle(a)).filter(p => p !== null);
+      if (run.mode === 'visible' && !observe().length) { reply({ started: false, reason: 'no_visible_posts' }); return; }
       controller = new AbortController();
       const signal = controller.signal;
-      window.scrollTo({ top: 0, behavior: 'instant' });
+      if (run.mode !== 'visible') window.scrollTo({ top: 0, behavior: 'instant' });
       reply({ started: true });
       void runReader(run, {
-        observe: () => Array.from(document.querySelectorAll('article[data-testid="tweet"]')).map(a => readArticle(a)).filter(p => p !== null),
+        observe,
         guard: () => guard(run),
         watch: collect => { const observer = new MutationObserver(collect); observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['src', 'srcset', 'poster', 'style', 'data-testid'] }); return () => observer.disconnect(); },
         commit: (sequence, posts) => request('BATCH', run, { sequence, posts }),

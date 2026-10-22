@@ -32,6 +32,13 @@ async function lastStart(page: Page) {
 async function savedPreferences(page: Page) {
   return page.evaluate(async () => { const path = '/src/popup-preferences.ts'; return (await import(path)).loadPopupPreferences(); });
 }
+async function scopeTextFits(page: Page, label: string) {
+  return page.getByLabel(label).evaluate(element => {
+    const select = element as HTMLSelectElement; const style = getComputedStyle(select);
+    const canvas = document.createElement('canvas'); const context = canvas.getContext('2d')!; context.font = style.font;
+    return context.measureText(select.selectedOptions[0]!.text).width + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + 18 <= select.clientWidth;
+  });
+}
 async function syntheticAiConnection(page: Page, connected = true) {
   await page.evaluate(async connected => { const path = '/src/db.ts'; const { db } = await import(path);
     if (connected) await db.settings.put({ key: 'decisionConnection', value: { endpoint: 'http://127.0.0.1:1234', model: 'd1-3b', threshold: 0.8, images: false } });
@@ -161,20 +168,25 @@ test('random bounds validate in the popup and Likes start sends the range in mil
   await page.getByLabel('最長（秒）').fill('31'); await expect(page.locator('.primary.full')).toBeDisabled();
   await page.getByLabel('最長（秒）').fill('8'); await page.getByLabel('今回の上限（件）').fill('10');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await scopeTextFits(page, '取り込み範囲')).toBe(true);
   await page.screenshot({ path: '/tmp/xbs-popup-random-ja.png' });
   await page.locator('.primary.full').click();
-  await expect.poll(() => lastStart(page)).toMatchObject({ source: 'likes', tabId: 11, handle: 'synthetic_user', options: { intervalMs: 3000, intervalMaxMs: 8000, maxPosts: 10, mode: 'full' } });
+  await expect.poll(() => lastStart(page)).toMatchObject({ source: 'likes', tabId: 11, handle: 'synthetic_user', options: { intervalMs: 3000, intervalMaxMs: 8000, maxPosts: 10, mode: 'visible' } });
   await expect(page.getByLabel('取り込み対象')).toBeDisabled(); await expect(page.getByLabel('最短（秒）')).toBeDisabled();
 });
 test('English popup hydrates a saved random run and fixed restart omits the optional upper bound', async ({ page }) => {
   await openPopup(page, 'likes', 'en', { id: 'saved', source: 'likes', state: 'paused', reason: 'user_pause', intervalMs: 6000, intervalMaxMs: 9000, maxPosts: 100, mode: 'full', observed: 10, added: 10, existing: 0 });
   await expect(page.getByLabel('Wait mode')).toHaveValue('random'); await expect(page.getByLabel('Minimum (seconds)')).toHaveValue('6');
   await expect(page.getByLabel('Maximum (seconds)')).toHaveValue('9');
+  await expect(page.getByLabel('Import scope')).toHaveValue('visible');
+  await expect(page.getByRole('button', { name: 'Restart from the current position', exact: true })).toBeVisible();
+  expect(await page.getByLabel('Import scope').locator('option').allTextContents()).toEqual(['Import from the current position', 'Focus on new bookmarks']);
+  expect(await scopeTextFits(page, 'Import scope')).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: '/tmp/xbs-popup-random-en.png' });
   await page.getByLabel('Wait mode').selectOption('fixed'); await expect(page.getByLabel('Maximum (seconds)')).toHaveCount(0);
   await page.locator('.primary.full').click();
-  await expect.poll(() => lastStart(page)).toMatchObject({ source: 'likes', options: { intervalMs: 6000, maxPosts: 100, mode: 'full' } });
+  await expect.poll(() => lastStart(page)).toMatchObject({ source: 'likes', options: { intervalMs: 6000, maxPosts: 100, mode: 'visible' } });
   const sent = await lastStart(page);
   expect(sent?.options).not.toHaveProperty('intervalMaxMs');
 });

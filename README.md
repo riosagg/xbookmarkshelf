@@ -30,6 +30,8 @@ The extension reads content displayed on X's pages (the DOM). Use it at your own
 
 Posts are saved in batches of up to 10. The default is a fixed three-second wait and 100 posts per run. Choose a fixed wait or a random wait between a minimum and maximum, within 3–30 seconds. The three-second minimum helps reduce load on X. The limit can be set to 10–1,000 posts, and your import settings are remembered.
 
+The default scope, "Import from the current position", starts with posts currently visible on X and scrolls down from there. Scroll to your desired starting point before opening the popup. "Focus on new bookmarks" starts at the top and stops after 30 consecutive saved posts. Both new and existing posts count toward the per-run limit. After pausing, the next run uses the selected scope and the current X page position; it does not restore a previous position.
+
 You can change the bookmarks and likes URLs under "Settings → Import URLs" and restore the defaults with "Reset URLs". Only HTTPS URLs on `x.com` are supported. Normally, no changes are needed. These settings can handle URL changes; changes to X's page structure may still require an extension update.
 
 Importing continues after you close the popup, and repeated imports avoid duplicate posts. It stops if the X tab is hidden, you navigate away, or an access restriction is detected. Complete imports and full synchronization are not guaranteed.

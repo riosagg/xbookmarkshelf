@@ -90,6 +90,18 @@ describe('persistent batch commits', () => {
     for (let batch = 0; batch < 3; batch++) await commitBatch(delta.id, batch, Array.from({ length: 10 }, (_, i) => observation(String(batch * 10 + i + 1))), store);
     expect((await store.importRuns.get(delta.id))?.reason).toBe('known_threshold');
   });
+  it('continues from visible posts past thirty known posts without losing edits or adding duplicates', async () => {
+    const seed = await runFor('visible', 40);
+    const posts = Array.from({ length: 40 }, (_, i) => observation(String(i + 1)));
+    for (let batch = 0; batch < 4; batch++) await commitBatch(seed.id, batch, posts.slice(batch * 10, batch * 10 + 10), store);
+    const state = { accountId: seed.accountId, postId: '1', read: true, favorite: true };
+    await store.userStates.put(state);
+    const run = newRun({ id: seed.accountId, handle: seed.handle }, 7, 'doc', { ...DEFAULT_OPTIONS, mode: 'visible', maxPosts: 40 });
+    await store.importRuns.add(run);
+    for (let batch = 0; batch < 4; batch++) await commitBatch(run.id, batch, posts.slice(batch * 10, batch * 10 + 10), store);
+    expect(await store.importRuns.get(run.id)).toMatchObject({ observed: 40, existing: 40, added: 0, reason: 'run_limit' });
+    expect(await store.posts.count()).toBe(40); expect(await store.userStates.get([seed.accountId, '1'])).toEqual(state);
+  });
   it('retains data across closing and opening the database', async () => {
     const run = await runFor(); await commitBatch(run.id, 0, [observation()], store);
     store.close(); await store.open(); expect(await store.posts.count()).toBe(1);

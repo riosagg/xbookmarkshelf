@@ -47,6 +47,15 @@ it('keeps fixed options compatible and ignores a malformed saved record', async 
   await store.settings.put({ key: IMPORT_PREFERENCES_KEY, value: { ...fixed, waitMode: 'random' } });
   expect(await loadPopupPreferences(store)).toBeUndefined();
 });
+it('replaces legacy full in the popup with visible without rewriting stored preferences or the old run', async () => {
+  const legacy = { ...preferencesFromOptions('likes', DEFAULT_OPTIONS), mode: 'full' as const };
+  await store.settings.put({ key: IMPORT_PREFERENCES_KEY, value: legacy });
+  expect(await loadPopupPreferences(store)).toEqual({ ...legacy, mode: 'visible' });
+  expect((await store.settings.get(IMPORT_PREFERENCES_KEY))?.value).toEqual(legacy);
+  const oldOptions = { ...DEFAULT_OPTIONS, mode: 'full' as const };
+  expect(preferencesFromOptions('likes', oldOptions).mode).toBe('visible');
+  expect(popupOptions(legacy).mode).toBe('visible'); expect(oldOptions.mode).toBe('full');
+});
 it('excludes import preferences from display settings JSON and protects them when applying display settings', async () => {
   const preferences = preferencesFromOptions('likes', { ...DEFAULT_OPTIONS, intervalMaxMs: 8000 }, true);
   await savePopupPreferences(preferences, store);
