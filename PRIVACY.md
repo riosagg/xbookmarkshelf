@@ -2,9 +2,9 @@
 
 English | [日本語](PRIVACY.ja.md)
 
-Last updated: October 17, 2026
+Last updated: October 22, 2026
 
-This policy covers the Chrome extension and local library app, version 0.1.2.
+This policy covers the Chrome extension and local library app, version 0.1.3.
 
 ## Data stored
 
