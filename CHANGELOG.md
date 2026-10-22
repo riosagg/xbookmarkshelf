@@ -2,7 +2,7 @@
 
 English | [日本語](CHANGELOG.ja.md)
 
-## Unreleased
+## v0.1.3
 
 - Replace "Rescan the current list from the top" with "Import from the current position". Import visible posts and continue scrolling down without stopping after 30 saved posts. Keep the existing import limits and duplicate protection.
 
