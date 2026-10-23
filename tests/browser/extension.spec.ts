@@ -6,6 +6,8 @@ import { join, resolve } from 'node:path';
 // All https://x.com requests are fulfilled locally. The isolated test copy grants
 // the fixture origin so direct popup navigation can exercise messaging without a toolbar click.
 for (const { path, collection } of [{ path: '/i/bookmarks', collection: 'bookmarks' }, { path: '/i/history', collection: 'bookmarks' }, { path: '/i/history', collection: 'likes' }, { path: '/i/history/likes', collection: 'likes' }, { path: '/synthetic_user/likes', collection: 'likes' }, { path: '/i/saved-posts', collection: 'bookmarks' }, { path: '/i/liked-posts', collection: 'likes' }]) test(`MV3 commits virtualized DOM batches on ${path} (${collection}) and preserves scope`, async () => {
+  // Multiple import runs include real 3-second waits; budget for the full scenario on hosted runners.
+  test.setTimeout(60000);
   const custom = path === '/i/saved-posts' || path === '/i/liked-posts';
   const sourceUrl = `https://x.com${path}`;
   const temp = await mkdtemp(join(tmpdir(), 'xbs-extension-'));
